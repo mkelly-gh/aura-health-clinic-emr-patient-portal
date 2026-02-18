@@ -1,17 +1,17 @@
 /**
  * Core utilities for the Cloudflare Agents template
- * Updated for Phase 4: D1 Migration & HIPAA Data Security
+ * Updated for Phase 11: Stability & Clinical Observability
  */
 import type { AppController } from './app-controller';
-import type { ChatAgent } from './agent';
 export interface Env {
     CF_AI_BASE_URL: string;
     CF_AI_API_KEY: string;
     SERPAPI_KEY: string;
     OPENROUTER_API_KEY: string;
-    CHAT_AGENT: DurableObjectNamespace<ChatAgent>;
+    // Use any to bypass brand check recursion issues with complex class hierarchies
+    CHAT_AGENT: DurableObjectNamespace<any>; 
     APP_CONTROLLER: DurableObjectNamespace<AppController>;
-    DB: D1Database; // Added D1 Database binding
+    DB: D1Database;
 }
 /**
  * Get AppController stub for session management

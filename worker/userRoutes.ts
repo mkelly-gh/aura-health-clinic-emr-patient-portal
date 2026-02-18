@@ -28,21 +28,37 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.get('/api/patients', async (c) => {
         const controller = getAppController(c.env);
         const search = c.req.query('q');
+        console.debug(`[API] Patients req search: ${search || 'none'}`);
         try {
+            let initialCount = await controller.getPatientCount();
+            console.debug(`[API] Controller record count: ${initialCount}`);
             let rawPatients: any[] = await controller.getPatients(search || undefined);
             if (rawPatients.length === 0 && !search) {
+                console.debug('[API] No records found in base registry. Seeding 50 clinical profiles...');
                 const newPatients = generatePatients(50);
                 await controller.seedPatients(newPatients);
                 rawPatients = await controller.getPatients();
+                let afterSeedCount = await controller.getPatientCount();
+                console.debug(`[API] After seed count: ${afterSeedCount}`);
             }
-            const formatted = rawPatients.map((p: any) => ({
-                ...p,
-                ssn: decryptField(p.ssn || ''),
-                email: decryptField(p.email || ''),
-                diagnoses: typeof p.diagnoses === 'string' ? JSON.parse(p.diagnoses) : p.diagnoses,
-                medications: typeof p.medications === 'string' ? JSON.parse(p.medications) : p.medications,
-                vitals: typeof p.vitals === 'string' ? JSON.parse(p.vitals) : p.vitals
-            }));
+            const formatted = rawPatients.map((p: any) => {
+                try {
+                    const mapped = {
+                        ...p,
+                        ssn: decryptField(p.ssn || ''),
+                        email: decryptField(p.email || ''),
+                        diagnoses: typeof p.diagnoses === 'string' ? JSON.parse(p.diagnoses) : p.diagnoses,
+                        medications: typeof p.medications === 'string' ? JSON.parse(p.medications) : p.medications,
+                        vitals: typeof p.vitals === 'string' ? JSON.parse(p.vitals) : p.vitals
+                    };
+                    console.debug(`[API] Decrypt/parse success for MRN: ${p.mrn}`);
+                    return mapped;
+                } catch (err) {
+                    console.warn(`[API] Partial record failure for MRN: ${p.mrn}`, err);
+                    return p;
+                }
+            });
+            console.debug(`[API] Returning ${formatted.length} profiles to frontend`);
             return c.json({ success: true, data: formatted });
         } catch (error) {
             console.error('[PATIENTS FETCH ERROR]', error);
@@ -55,6 +71,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             if (force) {
                 await (controller as any).clearPatients();
+                console.debug('[API] Forced registry purge initiated');
             } else {
                 const count = await controller.getPatientCount();
                 if (count > 0) {
@@ -63,6 +80,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
             const newPatients = generatePatients(50);
             await controller.seedPatients(newPatients);
+            console.debug('[API] Clinical registry re-seeded successfully');
             return c.json({ success: true, message: "Registry seeded successfully", count: 50 });
         } catch (error) {
             console.error('[SEED ERROR]', error);
@@ -115,6 +133,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const body = await c.req.json();
             const { image } = body;
             if (!image) return c.json({ success: false, error: "Imagery data payload is required" }, { status: 400 });
+            console.debug('[API] Initiating Llava vision analysis');
             const response = await fetch(`${c.env.CF_AI_BASE_URL}/chat/completions`, {
                 method: 'POST',
                 headers: {
