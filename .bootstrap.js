@@ -77,18 +77,7 @@ function updateWranglerJsonc() {
 }
 
 function runSetupCommands() {
-    const commands = [
-    "bun add @tanstack/react-table@^8.20.5",
-    "bun add lucide-react framer-motion recharts sonner zod react-hook-form @hookform/resolvers openai",
-    "bun add sonner",
-    "bun add zod react-hook-form @hookform/resolvers",
-    "bun add recharts@2.15.4",
-    "bun add openai uuid",
-    "bun add uuid",
-    "bun add @miniflare/d1",
-    "bun add @lucide/lab",
-    "bun add lucide-react@latest"
-];
+    const commands = [];
     
     if (commands.length === 0) {
         console.log('⊘ No setup commands to run');
