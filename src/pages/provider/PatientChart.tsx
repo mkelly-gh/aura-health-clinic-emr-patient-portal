@@ -23,7 +23,7 @@ export function PatientChart() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<{ analysis: string; confidence: number; image?: string } | null>(null);
   useEffect(() => {
-    fetch(`/api/patients/${id}`)
+    fetch(`/api/patients/${id}`, { credentials: 'omit' })
       .then(res => res.json())
       .then(res => {
         if (res.success) setPatient(res.data);
@@ -39,8 +39,9 @@ export function PatientChart() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       try {
-        const response = await fetch('/api/analyze-evidence', {
+        const response = await fetch('/api/analyze-evidence', { 
           method: 'POST',
+          credentials: 'omit',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: reader.result })
         });

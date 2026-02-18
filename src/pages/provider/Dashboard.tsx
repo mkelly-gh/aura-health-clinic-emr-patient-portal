@@ -22,8 +22,8 @@ export function Dashboard() {
     else setIsRefreshing(true);
     try {
       const [patientsRes, statusRes] = await Promise.all([
-        fetch('/api/patients').then(r => r.json()),
-        fetch('/api/db-status').then(r => r.json())
+        fetch('/api/patients', { credentials: 'omit' }).then(r => r.json()),
+        fetch('/api/db-status', { credentials: 'omit' }).then(r => r.json())
       ]);
       if (patientsRes.success) setPatients(patientsRes.data);
       if (statusRes.success) setDbStatus(statusRes.data);
@@ -42,7 +42,7 @@ export function Dashboard() {
   const handleSeedRegistry = async () => {
     setIsSeeding(true);
     try {
-      const res = await fetch('/api/seed-patients?force=true', { method: 'POST' });
+      const res = await fetch('/api/seed-patients?force=true', { method: 'POST', credentials: 'omit' });
       const data = await res.json();
       if (data.success) {
         toast.success("Clinical registry re-initialized with 50 records");

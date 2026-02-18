@@ -16,17 +16,20 @@ export function Portal() {
   useEffect(() => {
     const initPortal = async () => {
       try {
-        const res = await fetch('/api/patients');
+        const res = await fetch('/api/patients', { credentials: 'omit' });
         const data = await res.json();
         if (data.success && data.data.length > 0) {
           const p = data.data[0];
           setPatient(p);
           // Explicitly initialize AI context for the session
-          await fetch(`/api/chat/${chatService.getSessionId()}/init-context`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ patientId: p.id })
-          });
+          if (chatService.getSessionId) {
+            await fetch(`/api/chat/${chatService.getSessionId()}/init-context`, {
+              method: 'POST',
+              credentials: 'omit',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ patientId: p.id })
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to initialize patient portal", err);
@@ -36,11 +39,13 @@ export function Portal() {
     };
     initPortal();
   }, []);
-  if (isInitializing) {
+  if (isInitializing || !patient) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50/30 dark:bg-background">
         <Activity className="h-12 w-12 text-sky-600 animate-pulse mb-4" />
-        <p className="text-muted-foreground font-medium animate-pulse">Syncing your health records...</p>
+        <p className="text-muted-foreground font-medium animate-pulse">
+          {isInitializing ? 'Syncing your health records...' : 'No patient data found. Please contact support.'}
+        </p>
       </div>
     );
   }
@@ -120,7 +125,7 @@ export function Portal() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
-                  {patient?.medications.map((m, i) => (
+                  {(patient?.medications || []).map((m, i) => (
                     <div key={i} className="p-4 border rounded-2xl flex justify-between items-center group hover:bg-teal-50/30 dark:hover:bg-teal-900/10 transition-colors">
                       <div>
                         <div className="font-bold text-foreground">{m.name} {m.dosage}</div>
@@ -129,7 +134,7 @@ export function Portal() {
                       <Badge className="bg-teal-600/10 text-teal-700 dark:text-teal-400 border-none">Active</Badge>
                     </div>
                   ))}
-                  {(!patient?.medications || patient?.medications.length === 0) && (
+                  {(!patient?.medications || patient.medications.length === 0) && (
                     <div className="text-center py-8 text-muted-foreground italic text-sm">No active medications</div>
                   )}
                 </CardContent>
@@ -147,7 +152,7 @@ export function Portal() {
                 </div>
                 <h3 className="font-bold text-2xl mb-2">Secure & Private</h3>
                 <p className="text-sky-100/70 text-sm mb-8 px-4 leading-relaxed">Your medical information is encrypted and accessible only by your clinical team.</p>
-                <div className="py-3 bg-black/20 rounded-2xl text-[10px] font-mono tracking-widest text-sky-200 uppercase">SES-GATE-{chatService.getSessionId().split('-')[0]}</div>
+                <div className="py-3 bg-black/20 rounded-2xl text-[10px] font-mono tracking-widest text-sky-200 uppercase">SES-GATE-{chatService.getSessionId?.()?.split('-')[0] || '0000'}</div>
               </CardContent>
             </Card>
             <Card className="rounded-3xl border-none shadow-soft bg-white dark:bg-card">

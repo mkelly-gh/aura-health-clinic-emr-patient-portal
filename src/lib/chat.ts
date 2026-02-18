@@ -30,6 +30,7 @@ class ChatService {
       const response = await fetch(`${this.baseUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
         body: JSON.stringify({ message, model, stream: !!onChunk }),
       });
       
@@ -71,7 +72,7 @@ class ChatService {
 
   async getMessages(): Promise<ChatResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/messages`);
+      const response = await fetch(`${this.baseUrl}/messages`, { credentials: 'omit' });
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -87,7 +88,8 @@ class ChatService {
   async clearMessages(): Promise<ChatResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/clear`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'omit'
       });
       
       if (!response.ok) {
@@ -121,6 +123,7 @@ class ChatService {
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
         body: JSON.stringify({ title, sessionId, firstMessage })
       });
       return await response.json();
@@ -131,7 +134,7 @@ class ChatService {
 
   async listSessions(): Promise<{ success: boolean; data?: SessionInfo[]; error?: string }> {
     try {
-      const response = await fetch('/api/sessions');
+      const response = await fetch('/api/sessions', { credentials: 'omit' });
       return await response.json();
     } catch (error) {
       return { success: false, error: 'Failed to list sessions' };
@@ -140,7 +143,7 @@ class ChatService {
 
   async deleteSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+      const response = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE', credentials: 'omit' });
       return await response.json();
     } catch (error) {
       return { success: false, error: 'Failed to delete session' };
@@ -152,6 +155,7 @@ class ChatService {
       const response = await fetch(`/api/sessions/${sessionId}/title`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
         body: JSON.stringify({ title })
       });
       return await response.json();
@@ -162,7 +166,7 @@ class ChatService {
 
   async clearAllSessions(): Promise<{ success: boolean; data?: { deletedCount: number }; error?: string }> {
     try {
-      const response = await fetch('/api/sessions', { method: 'DELETE' });
+      const response = await fetch('/api/sessions', { method: 'DELETE', credentials: 'omit' });
       return await response.json();
     } catch (error) {
       return { success: false, error: 'Failed to clear all sessions' };
@@ -174,6 +178,7 @@ class ChatService {
       const response = await fetch(`${this.baseUrl}/model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
         body: JSON.stringify({ model })
       });
       
