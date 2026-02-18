@@ -1,4 +1,6 @@
 import type { Patient } from '../../worker/types';
+// We simulate btoa/atob for the frontend as well for consistent generation
+const pseudoEncrypt = (text: string) => typeof btoa !== 'undefined' ? btoa(text) : Buffer.from(text).toString('base64');
 const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
 const DIAGNOSES_TEMPLATES = [
@@ -18,17 +20,19 @@ export function generatePatients(count: number = 50): Patient[] {
     const dobYear = 1950 + Math.floor(Math.random() * 50);
     const dobMonth = 1 + Math.floor(Math.random() * 12);
     const dobDay = 1 + Math.floor(Math.random() * 28);
+    const ssnRaw = `${Math.floor(100 + Math.random() * 800)}-${Math.floor(10 + Math.random() * 80)}-${Math.floor(1000 + Math.random() * 8000)}`;
+    const emailRaw = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
     return {
       id,
       mrn: `AURA-${100000 + i}`,
-      ssn: `${Math.floor(100 + Math.random() * 800)}-${Math.floor(10 + Math.random() * 80)}-${Math.floor(1000 + Math.random() * 8000)}`,
+      ssn: pseudoEncrypt(ssnRaw),
       firstName,
       lastName,
       dob: `${dobYear}-${dobMonth.toString().padStart(2, '0')}-${dobDay.toString().padStart(2, '0')}`,
       gender: Math.random() > 0.5 ? 'Male' : 'Female',
       bloodType: ['A+', 'O+', 'B+', 'AB+', 'A-', 'O-', 'B-', 'AB-'][Math.floor(Math.random() * 8)],
-      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-      phone: `555-${100 + Math.random() * 800}-${Math.floor(1000 + Math.random() * 8000)}`,
+      email: pseudoEncrypt(emailRaw),
+      phone: `555-${Math.floor(100 + Math.random() * 800)}-${Math.floor(1000 + Math.random() * 8000)}`,
       address: `${Math.floor(100 + Math.random() * 900)} Medical Plaza Dr, Healthcare City, ST 12345`,
       diagnoses: [
         {
@@ -48,7 +52,15 @@ export function generatePatients(count: number = 50): Patient[] {
         hr: "72",
         temp: "98.6 F"
       },
-      history: "Patient has a chronic history of managed hypertension. No known drug allergies."
+      history: "Patient has a chronic history of managed hypertension. Routine screening suggested. No known drug allergies."
     };
   });
+}
+export function serializeForSQL(p: Patient) {
+    return {
+        ...p,
+        diagnoses: JSON.stringify(p.diagnoses),
+        medications: JSON.stringify(p.medications),
+        vitals: JSON.stringify(p.vitals)
+    };
 }

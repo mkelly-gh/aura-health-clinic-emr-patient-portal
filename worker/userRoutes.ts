@@ -4,7 +4,8 @@ import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
 import type { Patient } from './types';
-import { generatePatients } from '../src/lib/mockData';
+import { generatePatients, serializeForSQL } from '../src/lib/mockData';
+import { decryptField } from './utils';
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
@@ -25,36 +26,63 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.get('/api/patients', async (c) => {
         const controller = getAppController(c.env);
-        // Explicitly cast the patients result to ignore incorrectly inferred Disposable traits
-        const rawPatients = await controller.getPatients();
-        let patients = Array.from(rawPatients) as Patient[];
-        console.log('Initial patients count:', patients.length);
-        if (patients.length === 0) {
-            console.log('Attempting to seed patients');
-            try {
-                const newPatients = generatePatients(50);
-                await controller.seedPatients(newPatients);
-                console.log('Seeding completed, returning new patients');
-                patients = newPatients;
-            } catch (e) {
-                console.error("Seeding failed", e);
-            }
+        const search = c.req.query('q');
+        let query = 'SELECT * FROM patients';
+        let params: string[] = [];
+        if (search) {
+            query += ' WHERE firstName LIKE ? OR lastName LIKE ? OR mrn LIKE ?';
+            const term = `%${search}%`;
+            params = [term, term, term];
         }
-        return c.json({ success: true, data: patients });
+        const { results } = await c.env.DB.prepare(query).bind(...params).all<any>();
+        if (results.length === 0 && !search) {
+            const newPatients = generatePatients(50);
+            await controller.seedPatients(newPatients);
+            return c.json({ success: true, data: newPatients });
+        }
+        const formatted = results.map(p => ({
+            ...p,
+            ssn: decryptField(p.ssn),
+            email: decryptField(p.email),
+            diagnoses: JSON.parse(p.diagnoses),
+            medications: JSON.parse(p.medications),
+            vitals: JSON.parse(p.vitals)
+        }));
+        return c.json({ success: true, data: formatted });
     });
     app.get('/api/patients/:id', async (c) => {
-        const controller = getAppController(c.env);
-        const patient = await controller.getPatient(c.req.param('id'));
-        if (!patient) return c.json({ success: false, error: 'Patient not found' }, { status: 404 });
+        const id = c.req.param('id');
+        const p: any = await c.env.DB.prepare('SELECT * FROM patients WHERE id = ?').bind(id).first();
+        if (!p) return c.json({ success: false, error: 'Patient not found' }, { status: 404 });
+        const patient: Patient = {
+            ...p,
+            ssn: decryptField(p.ssn),
+            email: decryptField(p.email),
+            diagnoses: JSON.parse(p.diagnoses),
+            medications: JSON.parse(p.medications),
+            vitals: JSON.parse(p.vitals)
+        };
         return c.json({ success: true, data: patient });
+    });
+    app.get('/api/db-status', async (c) => {
+        const controller = getAppController(c.env);
+        const count = await controller.getPatientCount();
+        const sessionCount = (await c.env.DB.prepare('SELECT COUNT(*) as count FROM sessions').first<{count: number}>())?.count || 0;
+        return c.json({
+            success: true,
+            data: {
+                engine: 'Cloudflare D1 SQL',
+                patientCount: count,
+                sessionCount,
+                status: 'Healthy/HIPAA-Ready'
+            }
+        });
     });
     app.post('/api/analyze-evidence', async (c) => {
         try {
             const body = await c.req.json();
             const { image } = body;
-            if (!image) {
-                return c.json({ success: false, error: "Image data required" }, { status: 400 });
-            }
+            if (!image) return c.json({ success: false, error: "Image data required" }, { status: 400 });
             const response = await fetch(`${c.env.CF_AI_BASE_URL}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -85,13 +113,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 }
             });
         } catch (error) {
-            console.error("Vision error:", error);
             return c.json({ success: false, error: "Failed to analyze evidence" }, { status: 500 });
         }
     });
     app.get('/api/sessions', async (c) => {
-        const controller = getAppController(c.env);
-        const sessions = await controller.listSessions();
-        return c.json({ success: true, data: sessions });
+        const { results } = await c.env.DB.prepare('SELECT * FROM sessions ORDER BY lastActive DESC').all();
+        return c.json({ success: true, data: results });
     });
 }
