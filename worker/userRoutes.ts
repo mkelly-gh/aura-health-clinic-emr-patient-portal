@@ -4,6 +4,7 @@ import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
 import type { Patient } from './types';
+import { generatePatients } from '../src/lib/mockData';
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
@@ -27,11 +28,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         // Explicitly cast the patients result to ignore incorrectly inferred Disposable traits
         const rawPatients = await controller.getPatients();
         let patients = Array.from(rawPatients) as Patient[];
+        console.log('Initial patients count:', patients.length);
         if (patients.length === 0) {
+            console.log('Attempting to seed patients');
             try {
-                const { generatePatients } = await import('../src/lib/mockData');
                 const newPatients = generatePatients(50);
                 await controller.seedPatients(newPatients);
+                console.log('Seeding completed, returning new patients');
                 patients = newPatients;
             } catch (e) {
                 console.error("Seeding failed", e);
