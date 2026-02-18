@@ -1,35 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Filter, Download, Activity, Database, ShieldCheck, Zap } from 'lucide-react';
+import { Search, UserPlus, Filter, Download, Activity, Database, ShieldCheck, Zap, DatabaseZap, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { toast } from 'sonner';
 import type { Patient } from '../../../worker/types';
 export function Dashboard() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [dbStatus, setDbStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [search, setSearch] = useState('');
+  const loadData = async () => {
+    try {
+      const [patientsRes, statusRes] = await Promise.all([
+        fetch('/api/patients').then(r => r.json()),
+        fetch('/api/db-status').then(r => r.json())
+      ]);
+      if (patientsRes.success) setPatients(patientsRes.data);
+      if (statusRes.success) setDbStatus(statusRes.data);
+    } catch (err) {
+      console.error("Dashboard data fetch failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [patientsRes, statusRes] = await Promise.all([
-          fetch('/api/patients').then(r => r.json()),
-          fetch('/api/db-status').then(r => r.json())
-        ]);
-        if (patientsRes.success) setPatients(patientsRes.data);
-        if (statusRes.success) setDbStatus(statusRes.data);
-      } catch (err) {
-        console.error("Dashboard data fetch failed", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadData();
   }, []);
+  const handleSeedRegistry = async () => {
+    setIsSeeding(true);
+    try {
+      const res = await fetch('/api/seed-patients?force=true', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Clinical registry initialized with 50 records");
+        await loadData();
+      } else {
+        toast.error("Initialization failed: " + data.error);
+      }
+    } catch (err) {
+      toast.error("Network error during seeding");
+    } finally {
+      setIsSeeding(false);
+    }
+  };
   const filteredPatients = patients.filter(p =>
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
     p.mrn.toLowerCase().includes(search.toLowerCase())
@@ -52,8 +71,15 @@ export function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="hidden sm:flex hover:bg-teal-50 hover:text-teal-700">
-                <Download className="h-4 w-4 mr-2" /> Export
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSeedRegistry}
+                disabled={isSeeding}
+                className="hidden sm:flex border-teal-600/20 text-teal-700 hover:bg-teal-50"
+              >
+                {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <DatabaseZap className="h-4 w-4 mr-2" />}
+                Reset Registry
               </Button>
               <Button className="bg-teal-700 hover:bg-teal-800 shadow-md">
                 <UserPlus className="h-4 w-4 mr-2" /> New Patient
@@ -61,7 +87,7 @@ export function Dashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="shadow-sm border-none bg-teal-50/50 dark:bg-teal-900/10">
+            <Card className={`shadow-sm border-none bg-teal-50/50 dark:bg-teal-900/10 ${isSeeding ? 'animate-pulse' : ''}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Registry Records</CardTitle>
               </CardHeader>
@@ -87,7 +113,7 @@ export function Dashboard() {
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div className="text-sm font-mono text-amber-700 dark:text-amber-400 font-bold uppercase flex items-center gap-2">
-                  <Database className="h-5 w-5" /> 
+                  <Database className="h-5 w-5" />
                   {dbStatus?.engine || 'Initializing...'}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-600/60 uppercase tracking-widest">

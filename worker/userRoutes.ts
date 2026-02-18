@@ -31,7 +31,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             let rawPatients: any[] = await controller.getPatients(search || undefined);
             if (rawPatients.length === 0 && !search) {
-                console.info('[DATABASE] Seeding initial patient records...');
+                console.info('[DATABASE] Registry empty, seeding initial records...');
                 const newPatients = generatePatients(50);
                 await controller.seedPatients(newPatients);
                 rawPatients = await controller.getPatients();
@@ -48,6 +48,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         } catch (error) {
             console.error('[PATIENTS FETCH ERROR]', error);
             return c.json({ success: false, error: "Database retrieval failed" }, { status: 500 });
+        }
+    });
+    app.post('/api/seed-patients', async (c) => {
+        const controller = getAppController(c.env);
+        const force = c.req.query('force') === 'true';
+        try {
+            if (force) {
+                await controller.clearPatients();
+            } else {
+                const count = await controller.getPatientCount();
+                if (count > 0) {
+                    return c.json({ success: true, message: "Registry already populated", count });
+                }
+            }
+            const newPatients = generatePatients(50);
+            await controller.seedPatients(newPatients);
+            return c.json({ success: true, message: "Registry seeded successfully", count: 50 });
+        } catch (error) {
+            console.error('[SEED ERROR]', error);
+            return c.json({ success: false, error: "Seeding operation failed" }, { status: 500 });
         }
     });
     app.get('/api/patients/:id', async (c) => {
