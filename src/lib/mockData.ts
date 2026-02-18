@@ -31,7 +31,7 @@ export function generatePatients(count: number = 50): Patient[] {
       phone: `555-${100 + Math.random() * 800}-${Math.floor(1000 + Math.random() * 8000)}`,
       address: `${Math.floor(100 + Math.random() * 900)} Medical Plaza Dr, Healthcare City, ST 12345`,
       diagnoses: [
-        { 
+        {
           ...DIAGNOSES_TEMPLATES[Math.floor(Math.random() * DIAGNOSES_TEMPLATES.length)],
           date: new Date(2023, Math.floor(Math.random() * 12), 1).toISOString().split('T')[0]
         }

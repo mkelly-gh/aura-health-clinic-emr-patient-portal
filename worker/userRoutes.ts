@@ -3,6 +3,7 @@ import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
+import type { Patient } from './types';
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
@@ -23,7 +24,9 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.get('/api/patients', async (c) => {
         const controller = getAppController(c.env);
-        let patients = await controller.getPatients();
+        // Explicitly cast the patients result to ignore incorrectly inferred Disposable traits
+        const rawPatients = await controller.getPatients();
+        let patients = Array.from(rawPatients) as Patient[];
         if (patients.length === 0) {
             try {
                 const { generatePatients } = await import('../src/lib/mockData');
@@ -49,9 +52,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             if (!image) {
                 return c.json({ success: false, error: "Image data required" }, { status: 400 });
             }
-            // Using Cloudflare AI Gateway with Llava model for vision analysis
-            // Note: In a real Cloudflare Workers environment, you might use c.env.AI.run()
-            // Here we proxy via the AI Gateway pattern used in chat.ts
             const response = await fetch(`${c.env.CF_AI_BASE_URL}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -73,13 +73,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             });
             if (!response.ok) throw new Error("Vision AI request failed");
             const result: any = await response.json();
-            return c.json({ 
-                success: true, 
-                data: { 
+            return c.json({
+                success: true,
+                data: {
                     analysis: result.choices[0]?.message?.content || "No analysis generated.",
                     timestamp: Date.now(),
                     confidence: 0.89
-                } 
+                }
             });
         } catch (error) {
             console.error("Vision error:", error);
