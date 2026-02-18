@@ -23,7 +23,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     if (isOpen && messages.length === 0) {
       loadHistory();
     }
-  }, [isOpen]);
+  }, [isOpen, messages.length]);
   useEffect(() => {
     if (!isUserScrolling && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -59,7 +59,6 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
         accumulated += chunk;
         setStreamingContent(accumulated);
       });
-      await loadHistory();
       setStreamingContent('');
     } catch (err) {
       console.error("Chat message failed", err);

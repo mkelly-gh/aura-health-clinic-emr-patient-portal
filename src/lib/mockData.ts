@@ -1,6 +1,6 @@
 import type { Patient } from '../../worker/types';
 // We simulate btoa/atob for the frontend as well for consistent generation
-const pseudoEncrypt = (text: string) => typeof btoa !== 'undefined' ? btoa(text) : Buffer.from(text).toString('base64');
+const pseudoEncrypt = (text: string) => btoa(text);
 const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
 const DIAGNOSES_TEMPLATES = [
