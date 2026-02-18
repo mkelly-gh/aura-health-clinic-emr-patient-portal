@@ -1,8 +1,31 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { SidebarProvider, SidebarInset, SidebarTrigger, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { 
+  SidebarProvider, 
+  SidebarInset, 
+  SidebarTrigger, 
+  Sidebar, 
+  SidebarHeader, 
+  SidebarContent, 
+  SidebarGroup, 
+  SidebarMenu, 
+  SidebarMenuItem, 
+  SidebarMenuButton, 
+  SidebarGroupLabel 
+} from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { LayoutDashboard, Users, Calendar, Settings, Activity, ShieldPlus, ChevronLeft, Menu } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Calendar, 
+  Settings, 
+  Activity, 
+  ShieldPlus, 
+  ChevronLeft, 
+  Menu, 
+  FileBarChart,
+  LogOut
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 type AppLayoutProps = {
@@ -14,39 +37,37 @@ type AppLayoutProps = {
 export function AppLayout({ children, container = false, className, contentClassName }: AppLayoutProps): JSX.Element {
   const location = useLocation();
   const isMobile = useIsMobile();
+  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const NavContent = () => (
     <>
       <SidebarGroup>
+        <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Clinical Management</SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={location.pathname === '/provider'}>
+            <SidebarMenuButton 
+              asChild 
+              isActive={location.pathname === '/provider'}
+              onClick={() => setIsSheetOpen(false)}
+            >
               <Link to="/provider" className="flex items-center gap-3 px-4 py-2">
-                <LayoutDashboard className="h-5 w-5" /> 
-                <span className="font-medium">Dashboard</span>
+                <LayoutDashboard className="h-5 w-5" />
+                <span className="font-semibold">Patient Registry</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={location.pathname.startsWith('/provider/patient')}>
-              <Link to="/provider" className="flex items-center gap-3 px-4 py-2">
-                <Users className="h-5 w-5" /> 
-                <span className="font-medium">Patient Registry</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="#" className="flex items-center gap-3 px-4 py-2">
-                <Calendar className="h-5 w-5" /> 
-                <span className="font-medium">Schedule</span>
+            <SidebarMenuButton asChild onClick={() => setIsSheetOpen(false)}>
+              <a href="#" className="flex items-center gap-3 px-4 py-2 opacity-60 cursor-not-allowed">
+                <Calendar className="h-5 w-5" />
+                <span className="font-semibold">Clinic Schedule</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="#" className="flex items-center gap-3 px-4 py-2">
-                <ShieldPlus className="h-5 w-5" /> 
-                <span className="font-medium">Referrals</span>
+            <SidebarMenuButton asChild onClick={() => setIsSheetOpen(false)}>
+              <a href="#" className="flex items-center gap-3 px-4 py-2 opacity-60 cursor-not-allowed">
+                <FileBarChart className="h-5 w-5" />
+                <span className="font-semibold">Analytics & Reports</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -55,18 +76,22 @@ export function AppLayout({ children, container = false, className, contentClass
       <SidebarGroup className="mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="#" className="flex items-center gap-3 px-4 py-2">
-                <Settings className="h-5 w-5" /> 
-                <span className="font-medium">Settings</span>
+            <SidebarMenuButton asChild onClick={() => setIsSheetOpen(false)}>
+              <a href="#" className="flex items-center gap-3 px-4 py-2 opacity-60 cursor-not-allowed">
+                <Settings className="h-5 w-5" />
+                <span className="font-semibold">System Settings</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/" className="flex items-center gap-3 px-4 py-2 text-muted-foreground hover:text-destructive transition-colors">
-                <ChevronLeft className="h-5 w-5" /> 
-                <span className="font-medium">Exit Portal</span>
+            <SidebarMenuButton 
+              asChild 
+              onClick={() => setIsSheetOpen(false)}
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <Link to="/" className="flex items-center gap-3 px-4 py-2 transition-colors">
+                <LogOut className="h-5 w-5" />
+                <span className="font-semibold">Exit Portal</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -76,7 +101,6 @@ export function AppLayout({ children, container = false, className, contentClass
   );
   return (
     <SidebarProvider defaultOpen={!isMobile}>
-      {/* Desktop Sidebar */}
       {!isMobile && (
         <Sidebar collapsible="icon" className="border-r shadow-sm">
           <SidebarHeader className="border-b h-16 flex items-center px-6">
@@ -84,7 +108,7 @@ export function AppLayout({ children, container = false, className, contentClass
               <div className="h-9 w-9 rounded-xl bg-teal-700 flex items-center justify-center shadow-lg shadow-teal-700/20">
                 <Activity className="h-6 w-6 text-white" />
               </div>
-              <span className="font-bold text-xl text-teal-900 dark:text-teal-100 sidebar-hide">Aura EMR</span>
+              <span className="font-black text-xl text-teal-900 dark:text-teal-100 sidebar-hide">AURA EMR</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="py-4">
@@ -92,10 +116,10 @@ export function AppLayout({ children, container = false, className, contentClass
           </SidebarContent>
         </Sidebar>
       )}
-      <SidebarInset className={`bg-slate-50/50 dark:bg-background/50 ${className}`}>
+      <SidebarInset className={`bg-slate-50/30 dark:bg-background/50 ${className}`}>
         <header className="flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-md px-6 sticky top-0 z-40 shadow-sm">
           {isMobile ? (
-            <Sheet>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-xl">
                   <Menu className="h-6 w-6" />
@@ -119,10 +143,10 @@ export function AppLayout({ children, container = false, className, contentClass
           <div className="flex-1" />
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <span className="text-sm font-bold text-foreground block leading-tight">Dr. Aura Assistant</span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-teal-600">Attending Physician</span>
+              <span className="text-sm font-bold text-foreground block leading-tight">Dr. Aura Admin</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-teal-600">Clinical Attending</span>
             </div>
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 border shadow-sm flex items-center justify-center font-bold text-slate-600">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 border shadow-sm flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
               DA
             </div>
           </div>

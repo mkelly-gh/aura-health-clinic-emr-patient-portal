@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, Bot, X, Sparkles, MessageCircle, HelpCircle, Pill } from 'lucide-react';
+import { Send, Loader2, Bot, X, Sparkles, MessageCircle, HelpCircle, Pill, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { chatService } from '@/lib/chat';
 import type { Message } from '../../../worker/types';
 interface DrAuraChatProps {
@@ -16,21 +15,26 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       loadHistory();
     }
   }, [isOpen, messages.length]);
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isLoading]);
   const loadHistory = async () => {
-    const res = await chatService.getMessages();
-    if (res.success && res.data) {
-      setMessages(res.data.messages);
+    try {
+      const res = await chatService.getMessages();
+      if (res.success && res.data) {
+        setMessages(res.data.messages);
+      }
+    } catch (err) {
+      console.error("Failed to load chat history", err);
     }
   };
   const handleSend = async (content?: string) => {
@@ -39,27 +43,28 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     setInput('');
     setIsLoading(true);
     const tempId = crypto.randomUUID();
-    setMessages(prev => [...prev, {
+    const userMsg: Message = {
       id: tempId,
       role: 'user',
       content: textToSend.trim(),
       timestamp: Date.now()
-    }]);
+    };
+    setMessages(prev => [...prev, userMsg]);
     try {
       const res = await chatService.sendMessage(textToSend);
       if (res.success) {
         await loadHistory();
       }
     } catch (err) {
-      console.error(err);
+      console.error("Chat message failed", err);
     } finally {
       setIsLoading(false);
     }
   };
   const QUICK_ACTIONS = [
-    { label: "My Medications", icon: Pill, value: "Tell me about my current medications and dosages." },
-    { label: "Lab Results", icon: HelpCircle, value: "Explain my latest lab results to me." },
-    { label: "Healthy Tips", icon: Sparkles, value: "What lifestyle changes do you suggest based on my history?" }
+    { label: "Medications", icon: Pill, value: "Tell me about my current medications and what they are for." },
+    { label: "Lab Results", icon: HelpCircle, value: "Help me understand my latest test results." },
+    { label: "Health Plan", icon: Sparkles, value: "What are my next steps based on my diagnosis?" }
   ];
   return (
     <AnimatePresence>
@@ -68,7 +73,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[420px] h-[650px] max-h-[calc(100vh-8rem)] bg-white/90 dark:bg-card/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl flex flex-col z-[100] overflow-hidden"
+          className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[420px] h-[650px] max-h-[calc(100vh-8rem)] bg-white/95 dark:bg-card/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl flex flex-col z-[100] overflow-hidden"
         >
           <div className="p-5 bg-gradient-to-r from-sky-600 to-teal-600 text-white flex items-center justify-between shadow-lg">
             <div className="flex items-center gap-3">
@@ -76,10 +81,10 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                 <Bot className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="font-bold text-sm tracking-tight">Dr. Aura Assistant</h3>
+                <h3 className="font-bold text-sm tracking-tight">Dr. Aura</h3>
                 <div className="flex items-center gap-1.5 text-[10px] font-bold opacity-80 uppercase tracking-widest">
                   <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                  Context: Record ID {patientId}
+                  ID: #{patientId.slice(0, 8)}
                 </div>
               </div>
             </div>
@@ -87,16 +92,16 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
               <X className="h-5 w-5" />
             </Button>
           </div>
-          <ScrollArea className="flex-1 p-5">
+          <ScrollArea className="flex-1 p-5" ref={scrollAreaRef}>
             <div className="space-y-6">
               {messages.length === 0 && (
                 <div className="text-center py-12 px-6">
                   <div className="h-20 w-20 bg-sky-50 dark:bg-sky-900/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
                     <Sparkles className="h-10 w-10 text-sky-500" />
                   </div>
-                  <h4 className="font-bold text-foreground mb-2 text-lg">Personalized Care Intelligence</h4>
+                  <h4 className="font-bold text-foreground mb-2 text-lg">Context-Aware Clinical AI</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    I've reviewed your chart. Ask me about your medications, diagnosis, or health trends.
+                    I have full access to your medical history, medications, and lab results. How can I help you today?
                   </p>
                   <div className="mt-8 flex flex-wrap justify-center gap-2">
                     {QUICK_ACTIONS.map((action) => (
@@ -127,34 +132,35 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                 <div className="flex justify-start">
                   <div className="bg-muted/50 rounded-3xl rounded-tl-none p-4 flex items-center gap-3">
                     <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
-                    <span className="text-xs font-medium text-muted-foreground italic">Analyzing clinical context...</span>
+                    <span className="text-xs font-medium text-muted-foreground italic">Consulting your chart...</span>
                   </div>
                 </div>
               )}
-              <div ref={scrollRef} />
+              <div ref={bottomRef} />
             </div>
           </ScrollArea>
           <div className="p-5 border-t bg-muted/20">
             <div className="flex gap-2">
               <Input
-                placeholder="Type your health question..."
+                placeholder="Ask about your health..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                className="bg-background rounded-2xl border-none shadow-inner h-12 px-5"
+                className="bg-background rounded-2xl border-none shadow-inner h-12 px-5 focus-visible:ring-1 focus-visible:ring-sky-500"
+                disabled={isLoading}
               />
-              <Button 
-                size="icon" 
-                onClick={() => handleSend()} 
-                disabled={isLoading || !input.trim()} 
-                className="bg-sky-600 hover:bg-sky-700 h-12 w-12 rounded-2xl shadow-lg shadow-sky-600/20 active:scale-90 transition-all"
+              <Button
+                size="icon"
+                onClick={() => handleSend()}
+                disabled={isLoading || !input.trim()}
+                className="bg-sky-600 hover:bg-sky-700 h-12 w-12 rounded-2xl shadow-lg shadow-sky-600/20 active:scale-95 transition-all"
               >
                 <Send className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex items-center justify-center gap-2 mt-4">
-               <MessageCircle className="h-3 w-3 text-muted-foreground" />
-               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">End-to-end Encrypted Session</span>
+            <div className="flex items-center justify-center gap-2 mt-4 opacity-50">
+               <ShieldCheck className="h-3 w-3 text-muted-foreground" />
+               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Secure HIPAA-Ready Session</span>
             </div>
           </div>
         </motion.div>
