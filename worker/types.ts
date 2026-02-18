@@ -80,6 +80,16 @@ export interface SessionInfo {
   createdAt: number;
   lastActive: number;
 }
+export interface DbStatus {
+  engine: string;
+  binding: string;
+  connected: boolean;
+  pingMs: number;
+  patientCount: number;
+  sessionCount: number;
+  status: 'HEALTHY' | 'DEGRADED';
+  schemaVersion: string;
+}
 export interface Tool {
   name: string;
   description: string;

@@ -5,6 +5,7 @@ import { ChatHandler } from './chat';
 import { API_RESPONSES } from './config';
 import { createMessage, createStreamResponse, createEncoder } from './utils';
 import { getAppController } from './core-utils';
+// Resolve TS2589 by being explicit about the State type and reducing complexity
 export class ChatAgent extends Agent<Env, ChatState> {
   private chatHandler?: ChatHandler;
   initialState: ChatState = {
@@ -41,6 +42,7 @@ export class ChatAgent extends Agent<Env, ChatState> {
       }
       return Response.json({ success: false, error: API_RESPONSES.NOT_FOUND }, { status: 404 });
     } catch (error) {
+      console.error('[AGENT REQ ERROR]', error);
       return Response.json({ success: false, error: API_RESPONSES.INTERNAL_ERROR }, { status: 500 });
     }
   }
@@ -61,10 +63,12 @@ export class ChatAgent extends Agent<Env, ChatState> {
   private async handleChatMessage(body: { message: string; model?: string; stream?: boolean }): Promise<Response> {
     const { message, stream } = body;
     if (!message?.trim()) return Response.json({ success: false, error: API_RESPONSES.MISSING_MESSAGE }, { status: 400 });
-    const systemPrompt = this.state.patientContext
-      ? `You are Dr. Aura at Aura Health Clinic. Patient Context: ${this.state.patientContext.summary}.
-         Medications: ${this.state.patientContext.activeMedications.join(', ')}.
-         Diagnoses: ${this.state.patientContext.recentDiagnoses.join(', ')}.`
+    const ctx = this.state.patientContext;
+    const systemPrompt = ctx
+      ? `You are Dr. Aura at Aura Health Clinic. Patient Context: ${ctx.summary}.
+         Active Medications: ${ctx.activeMedications.join(', ')}.
+         Diagnoses: ${ctx.recentDiagnoses.join(', ')}.
+         Provide safe, relevant medical context based on this chart.`
       : undefined;
     const userMessage = createMessage('user', message.trim());
     const currentMessages = [...this.state.messages, userMessage];

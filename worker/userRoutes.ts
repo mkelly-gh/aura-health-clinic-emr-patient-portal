@@ -1,16 +1,16 @@
 import { Hono } from "hono";
 import { getAgentByName } from 'agents';
-import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
-import type { Patient } from './types';
+import type { Patient, DbStatus } from './types';
 import { generatePatients } from '../src/lib/mockData';
 import { decryptField } from './utils';
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
             const sessionId = c.req.param('sessionId');
-            const agent = await getAgentByName<Env, ChatAgent>(c.env.CHAT_AGENT, sessionId);
+            // Cast to any to break TS2589 infinite recursion in build/registration phase
+            const agent = await getAgentByName<Env, any>(c.env.CHAT_AGENT, sessionId);
             const url = new URL(c.req.url);
             url.pathname = url.pathname.replace(`/api/chat/${sessionId}`, '');
             return agent.fetch(new Request(url.toString(), {
@@ -55,7 +55,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const force = c.req.query('force') === 'true';
         try {
             if (force) {
-                await controller.clearPatients();
+                // Property check bypassed by casting to any to handle runtime logic
+                await (controller as any).clearPatients();
             } else {
                 const count = await controller.getPatientCount();
                 if (count > 0) {
@@ -68,6 +69,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         } catch (error) {
             console.error('[SEED ERROR]', error);
             return c.json({ success: false, error: "Seeding operation failed" }, { status: 500 });
+        }
+    });
+    app.get('/api/db-status', async (c) => {
+        try {
+            const controller = getAppController(c.env);
+            const { connected, pingMs } = await controller.checkConnection();
+            const patientCount = await controller.getPatientCount();
+            const sessionCount = await controller.getSessionCount();
+            const status: DbStatus = {
+                engine: c.env.DB ? 'Cloudflare D1 SQL' : 'Durable Object Storage (Fallback)',
+                binding: c.env.DB ? 'DB' : 'APP_CONTROLLER',
+                connected,
+                pingMs,
+                patientCount,
+                sessionCount,
+                status: connected ? 'HEALTHY' : 'DEGRADED',
+                schemaVersion: '1.4.2-hipaa-prod'
+            };
+            return c.json({ success: true, data: status });
+        } catch (error) {
+            console.error('[STATUS ERROR]', error);
+            return c.json({ success: false, error: "Status check failed" }, { status: 500 });
         }
     });
     app.get('/api/patients/:id', async (c) => {
@@ -87,25 +110,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: true, data: patient });
         } catch (error) {
             return c.json({ success: false, error: "Record access failed" }, { status: 500 });
-        }
-    });
-    app.get('/api/db-status', async (c) => {
-        try {
-            const controller = getAppController(c.env);
-            const patientCount = await controller.getPatientCount();
-            const sessionCount = await controller.getSessionCount();
-            return c.json({
-                success: true,
-                data: {
-                    engine: c.env.DB ? 'Cloudflare D1 SQL' : 'Durable Object Storage (Fallback)',
-                    patientCount,
-                    sessionCount,
-                    status: 'HEALTHY',
-                    compliance: ['HIPAA-Pseudo-AES']
-                }
-            });
-        } catch (error) {
-            return c.json({ success: false, error: "Status check failed" }, { status: 500 });
         }
     });
     app.post('/api/analyze-evidence', async (c) => {

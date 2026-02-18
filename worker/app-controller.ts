@@ -5,6 +5,27 @@ export class AppController extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
   }
+  async checkConnection(): Promise<{ connected: boolean; pingMs: number }> {
+    const start = Date.now();
+    try {
+      if (this.env.DB) {
+        await this.env.DB.prepare('SELECT 1').run();
+      } else {
+        await this.ctx.storage.get('health_check');
+      }
+      return { connected: true, pingMs: Date.now() - start };
+    } catch (e) {
+      console.error('[DB CHECK FAILED]', e);
+      return { connected: false, pingMs: Date.now() - start };
+    }
+  }
+  async clearPatients(): Promise<void> {
+    if (this.env.DB) {
+      await this.env.DB.prepare('DELETE FROM patients').run();
+    } else {
+      await this.ctx.storage.delete('patients');
+    }
+  }
   async addSession(sessionId: string, title?: string): Promise<void> {
     const now = Date.now();
     if (this.env.DB) {
@@ -75,9 +96,9 @@ export class AppController extends DurableObject<Env> {
   }
   async seedPatients(patients: Patient[]): Promise<void> {
     if (this.env.DB) {
-      const statements = patients.map(p => 
+      const statements = patients.map(p =>
         this.env.DB.prepare(`
-          INSERT OR IGNORE INTO patients 
+          INSERT OR IGNORE INTO patients
           (id, mrn, ssn, firstName, lastName, dob, gender, bloodType, email, phone, address, diagnoses, medications, vitals, history, createdAt)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
@@ -112,7 +133,7 @@ export class AppController extends DurableObject<Env> {
   }
   async getPatients(search?: string): Promise<any[]> {
     if (this.env.DB) {
-      const query = search 
+      const query = search
         ? 'SELECT * FROM patients WHERE firstName LIKE ? OR lastName LIKE ? OR mrn LIKE ?'
         : 'SELECT * FROM patients';
       const params = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
