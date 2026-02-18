@@ -29,29 +29,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const controller = getAppController(c.env);
         const search = c.req.query('q');
         try {
-            let query = 'SELECT * FROM patients';
-            let params: string[] = [];
-            if (search) {
-                query += ' WHERE firstName LIKE ? OR lastName LIKE ? OR mrn LIKE ?';
-                const term = `%${search}%`;
-                params = [term, term, term];
-            }
-            const { results } = await c.env.DB.prepare(query).bind(...params).all<any>();
+            let rawPatients: any[] = await controller.getPatients(search || undefined);
             // Seed if database is empty
-            if (results.length === 0 && !search) {
+            if (rawPatients.length === 0 && !search) {
                 console.info('[DATABASE] Seeding initial patient records...');
                 const newPatients = generatePatients(50);
                 await controller.seedPatients(newPatients);
                 console.info(`[DATABASE] Seeded ${newPatients.length} patients successfully.`);
-                return c.json({ success: true, data: newPatients });
+                rawPatients = await controller.getPatients();
             }
-            const formatted = results.map(p => ({
+            const formatted = rawPatients.map((p: any) => ({
                 ...p,
-                ssn: decryptField(p.ssn),
-                email: decryptField(p.email),
-                diagnoses: JSON.parse(p.diagnoses),
-                medications: JSON.parse(p.medications),
-                vitals: JSON.parse(p.vitals)
+                ssn: decryptField(p.ssn || ''),
+                email: decryptField(p.email || ''),
+                diagnoses: JSON.parse(p.diagnoses || '[]'),
+                medications: JSON.parse(p.medications || '[]'),
+                vitals: JSON.parse(p.vitals || '{}')
             }));
             return c.json({ success: true, data: formatted });
         } catch (error) {
@@ -62,15 +55,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.get('/api/patients/:id', async (c) => {
         const id = c.req.param('id');
         try {
-            const p: any = await c.env.DB.prepare('SELECT * FROM patients WHERE id = ?').bind(id).first();
-            if (!p) return c.json({ success: false, error: 'Patient not found' }, { status: 404 });
+            const controller = getAppController(c.env);
+            const rawP: any | null = await controller.getPatient(id);
+            if (!rawP) return c.json({ success: false, error: 'Patient not found' }, { status: 404 });
             const patient: Patient = {
-                ...p,
-                ssn: decryptField(p.ssn),
-                email: decryptField(p.email),
-                diagnoses: JSON.parse(p.diagnoses),
-                medications: JSON.parse(p.medications),
-                vitals: JSON.parse(p.vitals)
+                ...rawP,
+                ssn: decryptField(rawP.ssn || ''),
+                email: decryptField(rawP.email || ''),
+                diagnoses: JSON.parse(rawP.diagnoses || '[]'),
+                medications: JSON.parse(rawP.medications || '[]'),
+                vitals: JSON.parse(rawP.vitals || '{}')
             };
             return c.json({ success: true, data: patient });
         } catch (error) {
@@ -80,17 +74,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.get('/api/db-status', async (c) => {
         try {
             const controller = getAppController(c.env);
-            const count = await controller.getPatientCount();
-            const sessionCountRes = await c.env.DB.prepare('SELECT COUNT(*) as count FROM sessions').first<{count: number}>();
+            const patientCount = await controller.getPatientCount();
+            const sessionCount = await controller.getSessionCount();
             return c.json({
                 success: true,
                 data: {
-                    engine: 'Cloudflare D1 SQL Cluster',
-                    patientCount: count,
-                    sessionCount: sessionCountRes?.count || 0,
-                    status: 'PRODUCTION_HEALTHY',
-                    region: 'Auto-Global',
-                    compliance: ['HIPAA-Pseudo', 'GDPR-Compatible']
+                    engine: 'Durable Object Persistent Storage (Production Fallback)',
+                    patientCount,
+                    sessionCount,
+                    status: 'HEALTHY',
+                    region: 'Global DO',
+                    compliance: ['HIPAA-Pseudo', 'HIPAA-Compatible']
                 }
             });
         } catch (error) {
@@ -139,8 +133,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     app.get('/api/sessions', async (c) => {
         try {
-            const { results } = await c.env.DB.prepare('SELECT * FROM sessions ORDER BY lastActive DESC LIMIT 100').all();
-            return c.json({ success: true, data: results });
+            const controller = getAppController(c.env);
+            const sessions = await controller.listSessions();
+            return c.json({ success: true, data: sessions });
         } catch (error) {
             return c.json({ success: false, error: "Session indexing failed" }, { status: 500 });
         }

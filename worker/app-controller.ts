@@ -1,112 +1,123 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { SessionInfo, Patient } from './types';
 import type { Env } from './core-utils';
+
 export class AppController extends DurableObject<Env> {
-  private schemaChecked = false;
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
   }
-  async ensureSchema(): Promise<void> {
-    if (this.schemaChecked) return;
-    // Initialize D1 Tables for HIPAA-compliant storage
-    await this.env.DB.batch([
-      this.env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS patients (
-          id TEXT PRIMARY KEY,
-          mrn TEXT UNIQUE,
-          ssn TEXT, -- Encrypted
-          firstName TEXT,
-          lastName TEXT,
-          dob TEXT,
-          gender TEXT,
-          bloodType TEXT,
-          email TEXT, -- Encrypted
-          phone TEXT,
-          address TEXT,
-          diagnoses TEXT, -- JSON
-          medications TEXT, -- JSON
-          vitals TEXT, -- JSON
-          history TEXT,
-          createdAt INTEGER
-        )
-      `),
-      this.env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS sessions (
-          id TEXT PRIMARY KEY,
-          title TEXT,
-          createdAt INTEGER,
-          lastActive INTEGER
-        )
-      `),
-      this.env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_patients_mrn ON patients(mrn)`),
-      this.env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sessions_active ON sessions(lastActive)`)
-    ]);
-    this.schemaChecked = true;
-  }
+
   async addSession(sessionId: string, title?: string): Promise<void> {
-    await this.ensureSchema();
+    const sessionsRaw = await this.state.storage.get('sessions') || '[]';
+    const sessions = JSON.parse(sessionsRaw) as any[];
     const now = Date.now();
-    await this.env.DB.prepare(
-      'INSERT OR REPLACE INTO sessions (id, title, createdAt, lastActive) VALUES (?, ?, ?, ?)'
-    ).bind(
-      sessionId, 
-      title || `Chat ${new Date(now).toLocaleDateString()}`, 
-      now, 
-      now
-    ).run();
+    const exists = sessions.find(s => s.id === sessionId);
+    if (!exists) {
+      sessions.push({
+        id: sessionId,
+        title: title || `Chat ${new Date(now).toLocaleDateString()}`,
+        createdAt: now,
+        lastActive: now
+      });
+      await this.state.storage.put('sessions', JSON.stringify(sessions));
+    }
   }
+
   async listSessions(): Promise<SessionInfo[]> {
-    await this.ensureSchema();
-    const { results } = await this.env.DB.prepare(
-      'SELECT * FROM sessions ORDER BY lastActive DESC'
-    ).all<SessionInfo>();
-    return results;
+    const sessionsRaw = await this.state.storage.get('sessions') || '[]';
+    const sessions = JSON.parse(sessionsRaw) as SessionInfo[];
+    return sessions.sort((a, b) => b.lastActive - a.lastActive);
   }
+
   async removeSession(sessionId: string): Promise<boolean> {
-    await this.ensureSchema();
-    const result = await this.env.DB.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run();
-    return result.success;
+    const sessionsRaw = await this.state.storage.get('sessions') || '[]';
+    const sessions = JSON.parse(sessionsRaw) as any[];
+    const initialLength = sessions.length;
+    const newSessions = sessions.filter(s => s.id !== sessionId);
+    await this.state.storage.put('sessions', JSON.stringify(newSessions));
+    return newSessions.length < initialLength;
   }
+
   async updateSessionActivity(sessionId: string): Promise<void> {
-    await this.ensureSchema();
-    await this.env.DB.prepare('UPDATE sessions SET lastActive = ? WHERE id = ?')
-      .bind(Date.now(), sessionId)
-      .run();
+    const sessionsRaw = await this.state.storage.get('sessions') || '[]';
+    const sessions = JSON.parse(sessionsRaw) as any[];
+    const index = sessions.findIndex(s => s.id === sessionId);
+    if (index !== -1) {
+      sessions[index].lastActive = Date.now();
+      await this.state.storage.put('sessions', JSON.stringify(sessions));
+    }
   }
+
   async updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
-    await this.ensureSchema();
-    const result = await this.env.DB.prepare('UPDATE sessions SET title = ? WHERE id = ?')
-      .bind(title, sessionId)
-      .run();
-    return result.success;
+    const sessionsRaw = await this.state.storage.get('sessions') || '[]';
+    const sessions = JSON.parse(sessionsRaw) as any[];
+    const index = sessions.findIndex(s => s.id === sessionId);
+    if (index !== -1) {
+      sessions[index].title = title;
+      await this.state.storage.put('sessions', JSON.stringify(sessions));
+      return true;
+    }
+    return false;
   }
+
   async seedPatients(patients: Patient[]): Promise<void> {
-    await this.ensureSchema();
-    const statements = patients.map(p => 
-      this.env.DB.prepare(`
-        INSERT OR IGNORE INTO patients 
-        (id, mrn, ssn, firstName, lastName, dob, gender, bloodType, email, phone, address, diagnoses, medications, vitals, history, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        p.id, p.mrn, p.ssn, p.firstName, p.lastName, p.dob, p.gender, 
-        p.bloodType, p.email, p.phone, p.address, 
-        JSON.stringify(p.diagnoses), JSON.stringify(p.medications), 
-        JSON.stringify(p.vitals), p.history, Date.now()
-      )
-    );
-    await this.env.DB.batch(statements);
+    const patientsRaw = await this.state.storage.get('patients') || '[]';
+    const existing = JSON.parse(patientsRaw) as any[];
+    const existingMrns = new Set(existing.map((p: any) => p.mrn));
+    const existingIds = new Set(existing.map((p: any) => p.id));
+
+    const newPatients = patients
+      .filter(p => !existingMrns.has(p.mrn) && !existingIds.has(p.id))
+      .map(p => ({
+        id: p.id,
+        mrn: p.mrn,
+        ssn: p.ssn,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        dob: p.dob,
+        gender: p.gender,
+        bloodType: p.bloodType,
+        email: p.email,
+        phone: p.phone,
+        address: p.address,
+        diagnoses: JSON.stringify(p.diagnoses),
+        medications: JSON.stringify(p.medications),
+        vitals: JSON.stringify(p.vitals),
+        history: p.history,
+        createdAt: Date.now()
+      }));
+
+    if (newPatients.length > 0) {
+      await this.state.storage.put('patients', JSON.stringify([...existing, ...newPatients]));
+    }
   }
+
   async getPatientCount(): Promise<number> {
-    await this.ensureSchema();
-    const result = await this.env.DB.prepare('SELECT COUNT(*) as count FROM patients').first<{ count: number }>();
-    return result?.count || 0;
+    const patientsRaw = await this.state.storage.get('patients') || '[]';
+    return JSON.parse(patientsRaw).length;
   }
-  // Compatibility methods for existing types/calls
-  async getPatients(): Promise<Patient[]> {
-    // This is now handled directly in userRoutes for better performance
-    return []; 
+
+  async getPatients(search?: string): Promise<any[]> {
+    const patientsRaw = await this.state.storage.get('patients') || '[]';
+    const patients = JSON.parse(patientsRaw);
+    if (!search) return patients;
+    const term = search.toLowerCase();
+    return patients.filter((p: any) =>
+      p.firstName.toLowerCase().includes(term) ||
+      p.lastName.toLowerCase().includes(term) ||
+      p.mrn.toLowerCase().includes(term)
+    );
   }
-  async getPatient(id: string): Promise<Patient | null> {
-    return null; // Handled in userRoutes
+
+  async getPatient(id: string): Promise<any | null> {
+    const patientsRaw = await this.state.storage.get('patients') || '[]';
+    const patients = JSON.parse(patientsRaw);
+    return patients.find((p: any) => p.id === id) || null;
+  }
+
+  async getSessionCount(): Promise<number> {
+    const sessionsRaw = await this.state.storage.get('sessions') || '[]';
+    return JSON.parse(sessionsRaw).length;
   }
 }
+//
