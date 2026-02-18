@@ -1,23 +1,17 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { Toaster } from '@/components/ui/sonner';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { Routes, Route } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
+import { Dashboard } from './pages/provider/Dashboard';
+import { PatientChart } from './pages/provider/PatientChart';
+import { Portal } from './pages/patient/Portal';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 export default function App() {
   return (
-    <div className="min-h-screen bg-background font-sans selection:bg-teal-100 selection:text-teal-900 transition-colors duration-300">
-      <ThemeToggle className="fixed top-[14px] right-[140px] z-[100]" />
-      <main className="relative min-h-screen">
-        <Outlet />
-      </main>
-      <Toaster
-        position="bottom-right"
-        closeButton
-        richColors
-        expand={false}
-        toastOptions={{
-          className: "rounded-lg border-none shadow-clinical font-sans text-xs",
-        }}
-      />
-    </div>
+    <Routes>
+      <Route path="/" element={<HomePage />} errorElement={<RouteErrorBoundary />} />
+      <Route path="/provider" element={<Dashboard />} errorElement={<RouteErrorBoundary />} />
+      <Route path="/provider/patient/:id" element={<PatientChart />} errorElement={<RouteErrorBoundary />} />
+      <Route path="/portal" element={<Portal />} errorElement={<RouteErrorBoundary />} />
+    </Routes>
   );
 }
