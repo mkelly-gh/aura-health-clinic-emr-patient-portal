@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { v4 as uuid } from 'uuid';
 import { Send, Loader2, Bot, X, Sparkles, MessageCircle, HelpCircle, Pill, ShieldCheck, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     if (isOpen && messages.length === 0) {
       loadHistory();
     }
-  }, [isOpen, messages.length]);
+  }, [isOpen]);
   useEffect(() => {
     if (!isUserScrolling && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -47,7 +48,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     setStreamingContent('');
     setIsUserScrolling(false);
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       role: 'user',
       content: textToSend.trim(),
       timestamp: Date.now()
