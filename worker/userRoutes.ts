@@ -3,7 +3,7 @@ import { getAgentByName } from 'agents';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
 import type { Patient, DbStatus } from './types';
-import { generatePatients } from '../src/lib/mockData';
+
 import { decryptField } from './utils';
 export function coreRoutes(app: any) {
     app.all('/api/chat/:sessionId/*', async (c: any) => {
@@ -23,14 +23,20 @@ export function coreRoutes(app: any) {
         }
     });
 }
-export function userRoutes(app: Hono<{ Bindings: Env }>) {
-    app.get('/api/patients', async (c) => {
+export function userRoutes(app: any) {
+    app.get('/api/patients', async (c: any) => {
         const controller = getAppController(c.env);
         const search = c.req.query('q');
         try {
             const rawPatients: any[] = await controller.getPatients(search || undefined);
             if (rawPatients.length === 0 && !search) {
-                const newPatients = generatePatients(50);
+                let newPatients: Patient[] = [];
+                try {
+                    const { generatePatients } = await import('../src/lib/mockData');
+                    newPatients = generatePatients(50);
+                } catch (importError) {
+                    console.error('Mock data import failed:', importError);
+                }
                 await controller.seedPatients(newPatients);
                 return c.json({ success: true, data: await controller.getPatients() });
             }
@@ -47,19 +53,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: false, error: "Database retrieval failed" }, { status: 500 });
         }
     });
-    app.post('/api/seed-patients', async (c) => {
+    app.post('/api/seed-patients', async (c: any) => {
         const controller = getAppController(c.env);
         const force = c.req.query('force') === 'true';
         try {
             if (force) await (controller as any).clearPatients();
-            const newPatients = generatePatients(50);
+            let newPatients: Patient[] = [];
+            try {
+                const { generatePatients } = await import('../src/lib/mockData');
+                newPatients = generatePatients(50);
+            } catch (importError) {
+                console.error('Mock data import failed:', importError);
+            }
             await controller.seedPatients(newPatients);
-            return c.json({ success: true, message: "Registry seeded successfully", count: 50 });
+            return c.json({ success: true, message: "Registry seeded successfully", count: newPatients.length });
         } catch (error) {
             return c.json({ success: false, error: "Seeding operation failed" }, { status: 500 });
         }
     });
-    app.get('/api/db-status', async (c) => {
+    app.get('/api/db-status', async (c: any) => {
         try {
             const controller = getAppController(c.env);
             const { connected, pingMs } = await controller.checkConnection();
@@ -80,7 +92,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: false, error: "Status check failed" }, { status: 500 });
         }
     });
-    app.get('/api/patients/:id', async (c) => {
+    app.get('/api/patients/:id', async (c: any) => {
         const id = c.req.param('id');
         try {
             const controller = getAppController(c.env);
@@ -99,7 +111,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: false, error: "Record access failed" }, { status: 500 });
         }
     });
-    app.post('/api/analyze-evidence', async (c) => {
+    app.post('/api/analyze-evidence', async (c: any) => {
         try {
             const body = await c.req.json();
             const { image } = body;
@@ -135,7 +147,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: false, error: "Clinical Vision AI service unavailable" }, { status: 503 });
         }
     });
-    app.get('/api/sessions', async (c) => {
+    app.get('/api/sessions', async (c: any) => {
         try {
             const controller = getAppController(c.env);
             const sessions = await controller.listSessions();
