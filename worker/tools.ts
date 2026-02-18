@@ -1,5 +1,4 @@
 import type { WeatherResult, ErrorResult } from './types';
-import { mcpManager } from './mcp-client';
 
 export type ToolResult = WeatherResult | { content: string } | ErrorResult;
 
@@ -43,7 +42,7 @@ const customTools = [
 ];
 
 export async function getToolDefinitions() {
-  const mcpTools = await mcpManager.getToolDefinitions();
+  const mcpTools: any[] = [];
   return [...customTools, ...mcpTools];
 }
 
@@ -183,8 +182,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
       }
       
       default: {
-        const content = await mcpManager.executeTool(name, args);
-        return { content };
+        return { error: `Tool ${name} not available (MCP disabled)` };
       }
     }
   } catch (error) {
