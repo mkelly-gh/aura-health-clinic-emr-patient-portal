@@ -1,23 +1,7 @@
-export interface Patient {
-  id: string;
-  mrn: string;
-  ssn: string;
-  firstName: string;
-  lastName: string;
-  dob: string;
-  gender: 'Male' | 'Female' | 'Other';
-  bloodType: string;
-  email: string;
-  phone: string;
-  address: string;
-  diagnoses: { code: string; description: string; date: string }[];
-  medications: { name: string; dosage: string; frequency: string; status: 'Active' | 'Discontinued' }[];
-  vitals: { height: string; weight: string; bmi: string; bp: string; hr: string; temp: string };
-  history: string;
-}
+import type { Patient } from '../../worker/types';
 const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
-const DIAGNOSES = [
+const DIAGNOSES_TEMPLATES = [
   { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
   { code: 'I10', description: 'Essential (primary) hypertension' },
   { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
@@ -46,7 +30,12 @@ export function generatePatients(count: number = 50): Patient[] {
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
       phone: `555-${100 + Math.random() * 800}-${Math.floor(1000 + Math.random() * 8000)}`,
       address: `${Math.floor(100 + Math.random() * 900)} Medical Plaza Dr, Healthcare City, ST 12345`,
-      diagnoses: [DIAGNOSES[Math.floor(Math.random() * DIAGNOSES.length)]],
+      diagnoses: [
+        { 
+          ...DIAGNOSES_TEMPLATES[Math.floor(Math.random() * DIAGNOSES_TEMPLATES.length)],
+          date: new Date(2023, Math.floor(Math.random() * 12), 1).toISOString().split('T')[0]
+        }
+      ],
       medications: [
         { name: 'Metformin', dosage: '500mg', frequency: 'Twice daily', status: 'Active' },
         { name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', status: 'Active' }

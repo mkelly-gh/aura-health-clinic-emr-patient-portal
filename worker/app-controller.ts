@@ -53,7 +53,6 @@ export class AppController extends DurableObject<Env> {
     }
     await this.persistPatients();
   }
-  // Original boilerplate methods preserved
   async removeSession(sessionId: string): Promise<boolean> {
     await this.ensureLoaded();
     const deleted = this.sessions.delete(sessionId);
