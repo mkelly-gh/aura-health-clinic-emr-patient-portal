@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, DatabaseZap, Loader2, Info } from 'lucide-react';
+import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, DatabaseZap, Loader2, Info, RefreshCcw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,8 +15,11 @@ export function Dashboard() {
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setIsRefreshing(true);
     try {
       const [patientsRes, statusRes] = await Promise.all([
         fetch('/api/patients').then(r => r.json()),
@@ -28,11 +31,12 @@ export function Dashboard() {
       console.error("Dashboard data fetch failed", err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000); // Periodic status refresh
+    const interval = setInterval(() => loadData(true), 15000);
     return () => clearInterval(interval);
   }, []);
   const handleSeedRegistry = async () => {
@@ -67,10 +71,12 @@ export function Dashboard() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Badge variant="outline" className={`border-teal-500/50 cursor-help font-bold gap-1.5 ${dbStatus?.connected ? 'bg-teal-50/50 text-teal-700' : 'bg-destructive/10 text-destructive'}`}>
-                        <div className={`h-2 w-2 rounded-full animate-pulse ${dbStatus?.connected ? 'bg-teal-500' : 'bg-destructive'}`} />
-                        {dbStatus?.engine === 'Cloudflare D1 SQL' ? 'D1 PRODUCTION' : 'LOCAL FALLBACK'}
-                      </Badge>
+                      <span className="inline-flex">
+                        <Badge variant="outline" className={`border-teal-500/50 cursor-help font-bold gap-1.5 ${dbStatus?.connected ? 'bg-teal-50/50 text-teal-700' : 'bg-destructive/10 text-destructive'}`}>
+                          <div className={`h-2 w-2 rounded-full animate-pulse ${dbStatus?.connected ? 'bg-teal-500' : 'bg-destructive'}`} />
+                          {dbStatus?.engine === 'Cloudflare D1 SQL' ? 'D1 PRODUCTION' : 'LOCAL FALLBACK'}
+                        </Badge>
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent className="p-4 w-64 bg-card shadow-xl border">
                       <div className="space-y-2">
@@ -78,9 +84,9 @@ export function Dashboard() {
                           System Diagnostics <Info className="h-3 w-3" />
                         </div>
                         <div className="text-[10px] space-y-1 font-mono uppercase">
+                          <div className="flex justify-between"><span>Node:</span> <span className="text-teal-600">US-EAST-1</span></div>
                           <div className="flex justify-between"><span>Binding:</span> <span className="text-teal-600">{dbStatus?.binding}</span></div>
                           <div className="flex justify-between"><span>Ping:</span> <span className="text-teal-600">{dbStatus?.pingMs}ms</span></div>
-                          <div className="flex justify-between"><span>Schema:</span> <span className="text-teal-600">{dbStatus?.schemaVersion}</span></div>
                           <div className="flex justify-between"><span>Health:</span> <span className={dbStatus?.connected ? 'text-teal-600' : 'text-destructive'}>{dbStatus?.status}</span></div>
                         </div>
                       </div>
@@ -155,6 +161,7 @@ export function Dashboard() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
+              {isRefreshing && <RefreshCcw className="h-4 w-4 animate-spin text-muted-foreground" />}
               <Button variant="ghost" size="icon" className="rounded-xl hover:bg-background shadow-sm border">
                 <Filter className="h-4 w-4" />
               </Button>
@@ -174,7 +181,14 @@ export function Dashboard() {
                 {loading ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-20 text-muted-foreground">Syncing clinical nodes...</TableCell></TableRow>
                 ) : filteredPatients.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-20 text-muted-foreground">No records matching query.</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-24">
+                      <div className="flex flex-col items-center gap-3 opacity-40">
+                        <Activity className="h-12 w-12" />
+                        <p className="font-medium text-lg">No clinical records found matching your query.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   filteredPatients.map((p) => (
                     <TableRow key={p.id} className="group hover:bg-teal-50/30 dark:hover:bg-teal-900/10 transition-colors border-b last:border-0">

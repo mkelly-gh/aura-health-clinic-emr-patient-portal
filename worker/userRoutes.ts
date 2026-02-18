@@ -9,7 +9,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
             const sessionId = c.req.param('sessionId');
-            // Cast to any to break TS2589 infinite recursion in build/registration phase
+            // Cast to any to break potential TS2589 infinite recursion in Hono route registration
             const agent = await getAgentByName<Env, any>(c.env.CHAT_AGENT, sessionId);
             const url = new URL(c.req.url);
             url.pathname = url.pathname.replace(`/api/chat/${sessionId}`, '');
@@ -31,7 +31,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             let rawPatients: any[] = await controller.getPatients(search || undefined);
             if (rawPatients.length === 0 && !search) {
-                console.info('[DATABASE] Registry empty, seeding initial records...');
                 const newPatients = generatePatients(50);
                 await controller.seedPatients(newPatients);
                 rawPatients = await controller.getPatients();
@@ -55,7 +54,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const force = c.req.query('force') === 'true';
         try {
             if (force) {
-                // Property check bypassed by casting to any to handle runtime logic
                 await (controller as any).clearPatients();
             } else {
                 const count = await controller.getPatientCount();
@@ -98,7 +96,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             const controller = getAppController(c.env);
             const rawP: any | null = await controller.getPatient(id);
-            if (!rawP) return c.json({ success: false, error: 'Patient not found' }, { status: 404 });
+            if (!rawP) return c.json({ success: false, error: 'Clinical record not found for the requested ID.' }, { status: 404 });
             const patient: Patient = {
                 ...rawP,
                 ssn: decryptField(rawP.ssn || ''),
@@ -116,7 +114,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             const body = await c.req.json();
             const { image } = body;
-            if (!image) return c.json({ success: false, error: "Image data required" }, { status: 400 });
+            if (!image) return c.json({ success: false, error: "Imagery data payload is required" }, { status: 400 });
             const response = await fetch(`${c.env.CF_AI_BASE_URL}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -129,25 +127,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                         {
                             role: 'user',
                             content: [
-                                { type: 'text', text: 'Analyze this clinical image. Describe morphology and features for a medical record. Be clinical and concise.' },
+                                { type: 'text', text: 'Analyze this clinical image for a medical record. Describe morphology, borders, and clinical features concisely.' },
                                 { type: 'image_url', image_url: { url: image } }
                             ]
                         }
                     ]
-                })
+                }),
+                signal: AbortSignal.timeout(30000)
             });
-            if (!response.ok) throw new Error("Vision AI processing failed");
+            if (!response.ok) throw new Error("Vision AI service timed out or failed");
             const result: any = await response.json();
             return c.json({
                 success: true,
                 data: {
-                    analysis: result.choices[0]?.message?.content || "Analysis inconclusive.",
+                    analysis: result.choices[0]?.message?.content || "Analysis inconclusive. Ensure image quality is sufficient.",
                     confidence: 0.94
                 }
             });
         } catch (error) {
             console.error('[VISION ERROR]', error);
-            return c.json({ success: false, error: "Vision service unavailable" }, { status: 500 });
+            return c.json({ success: false, error: "Clinical Vision AI service is temporarily unavailable" }, { status: 503 });
         }
     });
     app.get('/api/sessions', async (c) => {

@@ -5,8 +5,8 @@ import { ChatHandler } from './chat';
 import { API_RESPONSES } from './config';
 import { createMessage, createStreamResponse, createEncoder } from './utils';
 import { getAppController } from './core-utils';
-// Resolve TS2589 by being explicit about the State type and reducing complexity
-export class ChatAgent extends Agent<Env, ChatState> {
+// Cast to any to bypass TS2589 infinite recursion in complex Cloudflare Agent hierarchies
+export class ChatAgent extends (Agent as any)<Env, ChatState> {
   private chatHandler?: ChatHandler;
   initialState: ChatState = {
     messages: [],
@@ -15,25 +15,27 @@ export class ChatAgent extends Agent<Env, ChatState> {
     model: 'google-ai-studio/gemini-2.5-flash'
   };
   async onStart(): Promise<void> {
+    const currentState = this.state as ChatState;
     this.chatHandler = new ChatHandler(
       this.env.CF_AI_BASE_URL,
       this.env.CF_AI_API_KEY,
-      this.state.model
+      currentState.model || 'google-ai-studio/gemini-2.5-flash'
     );
   }
   async onRequest(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
       const method = request.method;
+      const state = this.state as ChatState;
       if (method === 'GET' && url.pathname === '/messages') {
-        return Response.json({ success: true, data: this.state });
+        return Response.json({ success: true, data: state });
       }
       if (method === 'POST' && url.pathname === '/chat') {
         const body = await request.json();
         return this.handleChatMessage(body as any);
       }
       if (method === 'DELETE' && url.pathname === '/clear') {
-        this.setState({ ...this.state, messages: [] });
+        this.setState({ ...state, messages: [] });
         return Response.json({ success: true });
       }
       if (method === 'POST' && url.pathname === '/init-context') {
@@ -57,13 +59,15 @@ export class ChatAgent extends Agent<Env, ChatState> {
       activeMedications: Array.isArray(meds) ? meds.filter((m: any) => m.status === 'Active').map((m: any) => String(m.name)) : [],
       recentDiagnoses: Array.isArray(diags) ? diags.map((d: any) => String(d.description)) : []
     };
-    this.setState({ ...this.state, patientContext: context });
+    const state = this.state as ChatState;
+    this.setState({ ...state, patientContext: context });
     return Response.json({ success: true, data: context });
   }
   private async handleChatMessage(body: { message: string; model?: string; stream?: boolean }): Promise<Response> {
     const { message, stream } = body;
     if (!message?.trim()) return Response.json({ success: false, error: API_RESPONSES.MISSING_MESSAGE }, { status: 400 });
-    const ctx = this.state.patientContext;
+    const state = this.state as ChatState;
+    const ctx = state.patientContext;
     const systemPrompt = ctx
       ? `You are Dr. Aura at Aura Health Clinic. Patient Context: ${ctx.summary}.
          Active Medications: ${ctx.activeMedications.join(', ')}.
@@ -71,8 +75,8 @@ export class ChatAgent extends Agent<Env, ChatState> {
          Provide safe, relevant medical context based on this chart.`
       : undefined;
     const userMessage = createMessage('user', message.trim());
-    const currentMessages = [...this.state.messages, userMessage];
-    this.setState({ ...this.state, messages: currentMessages, isProcessing: true });
+    const currentMessages = [...state.messages, userMessage];
+    this.setState({ ...state, messages: currentMessages, isProcessing: true });
     try {
       if (stream) {
         const { readable, writable } = new TransformStream();
@@ -84,7 +88,8 @@ export class ChatAgent extends Agent<Env, ChatState> {
               writer.write(encoder.encode(chunk));
             });
             const assistantMessage = createMessage('assistant', response.content, response.toolCalls);
-            this.setState({ ...this.state, messages: [...currentMessages, assistantMessage], isProcessing: false });
+            const finalState = this.state as ChatState;
+            this.setState({ ...finalState, messages: [...currentMessages, assistantMessage], isProcessing: false });
           } catch (e) {
             writer.write(encoder.encode('Error processing AI response.'));
           } finally {
@@ -95,10 +100,12 @@ export class ChatAgent extends Agent<Env, ChatState> {
       }
       const response = await this.chatHandler!.processMessage(message, currentMessages, systemPrompt);
       const assistantMessage = createMessage('assistant', response.content, response.toolCalls);
-      this.setState({ ...this.state, messages: [...currentMessages, assistantMessage], isProcessing: false });
+      const nextState = this.state as ChatState;
+      this.setState({ ...nextState, messages: [...currentMessages, assistantMessage], isProcessing: false });
       return Response.json({ success: true, data: this.state });
     } catch (error) {
-      this.setState({ ...this.state, isProcessing: false });
+      const errorState = this.state as ChatState;
+      this.setState({ ...errorState, isProcessing: false });
       return Response.json({ success: false, error: API_RESPONSES.PROCESSING_ERROR }, { status: 500 });
     }
   }
