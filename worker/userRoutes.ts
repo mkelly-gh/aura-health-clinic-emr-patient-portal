@@ -5,11 +5,10 @@ import { Env, getAppController } from "./core-utils";
 import type { Patient, DbStatus } from './types';
 import { generatePatients } from '../src/lib/mockData';
 import { decryptField } from './utils';
-export function coreRoutes(app: Hono<{ Bindings: Env }>) {
-    app.all('/api/chat/:sessionId/*', async (c) => {
+export function coreRoutes(app: any) {
+    app.all('/api/chat/:sessionId/*', async (c: any) => {
         try {
             const sessionId = c.req.param('sessionId');
-            // Cast to any to break potential TS2589 infinite recursion in Hono route registration
             const agent = await getAgentByName<Env, any>(c.env.CHAT_AGENT, sessionId);
             const url = new URL(c.req.url);
             url.pathname = url.pathname.replace(`/api/chat/${sessionId}`, '');
@@ -28,40 +27,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.get('/api/patients', async (c) => {
         const controller = getAppController(c.env);
         const search = c.req.query('q');
-        console.debug(`[API] Patients req search: ${search || 'none'}`);
         try {
-            let initialCount = await controller.getPatientCount();
-            console.debug(`[API] Controller record count: ${initialCount}`);
-            let rawPatients: any[] = await controller.getPatients(search || undefined);
+            const rawPatients: any[] = await controller.getPatients(search || undefined);
             if (rawPatients.length === 0 && !search) {
-                console.debug('[API] No records found in base registry. Seeding 50 clinical profiles...');
                 const newPatients = generatePatients(50);
                 await controller.seedPatients(newPatients);
-                rawPatients = await controller.getPatients();
-                let afterSeedCount = await controller.getPatientCount();
-                console.debug(`[API] After seed count: ${afterSeedCount}`);
+                return c.json({ success: true, data: await controller.getPatients() });
             }
-            const formatted = rawPatients.map((p: any) => {
-                try {
-                    const mapped = {
-                        ...p,
-                        ssn: decryptField(p.ssn || ''),
-                        email: decryptField(p.email || ''),
-                        diagnoses: typeof p.diagnoses === 'string' ? JSON.parse(p.diagnoses) : p.diagnoses,
-                        medications: typeof p.medications === 'string' ? JSON.parse(p.medications) : p.medications,
-                        vitals: typeof p.vitals === 'string' ? JSON.parse(p.vitals) : p.vitals
-                    };
-                    console.debug(`[API] Decrypt/parse success for MRN: ${p.mrn}`);
-                    return mapped;
-                } catch (err) {
-                    console.warn(`[API] Partial record failure for MRN: ${p.mrn}`, err);
-                    return p;
-                }
-            });
-            console.debug(`[API] Returning ${formatted.length} profiles to frontend`);
+            const formatted = rawPatients.map((p: any) => ({
+                ...p,
+                ssn: decryptField(p.ssn || ''),
+                email: decryptField(p.email || ''),
+                diagnoses: typeof p.diagnoses === 'string' ? JSON.parse(p.diagnoses) : p.diagnoses,
+                medications: typeof p.medications === 'string' ? JSON.parse(p.medications) : p.medications,
+                vitals: typeof p.vitals === 'string' ? JSON.parse(p.vitals) : p.vitals
+            }));
             return c.json({ success: true, data: formatted });
         } catch (error) {
-            console.error('[PATIENTS FETCH ERROR]', error);
             return c.json({ success: false, error: "Database retrieval failed" }, { status: 500 });
         }
     });
@@ -69,21 +51,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const controller = getAppController(c.env);
         const force = c.req.query('force') === 'true';
         try {
-            if (force) {
-                await (controller as any).clearPatients();
-                console.debug('[API] Forced registry purge initiated');
-            } else {
-                const count = await controller.getPatientCount();
-                if (count > 0) {
-                    return c.json({ success: true, message: "Registry already populated", count });
-                }
-            }
+            if (force) await (controller as any).clearPatients();
             const newPatients = generatePatients(50);
             await controller.seedPatients(newPatients);
-            console.debug('[API] Clinical registry re-seeded successfully');
             return c.json({ success: true, message: "Registry seeded successfully", count: 50 });
         } catch (error) {
-            console.error('[SEED ERROR]', error);
             return c.json({ success: false, error: "Seeding operation failed" }, { status: 500 });
         }
     });
@@ -105,7 +77,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             };
             return c.json({ success: true, data: status });
         } catch (error) {
-            console.error('[STATUS ERROR]', error);
             return c.json({ success: false, error: "Status check failed" }, { status: 500 });
         }
     });
@@ -114,7 +85,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             const controller = getAppController(c.env);
             const rawP: any | null = await controller.getPatient(id);
-            if (!rawP) return c.json({ success: false, error: 'Clinical record not found for the requested ID.' }, { status: 404 });
+            if (!rawP) return c.json({ success: false, error: 'Clinical record not found.' }, { status: 404 });
             const patient: Patient = {
                 ...rawP,
                 ssn: decryptField(rawP.ssn || ''),
@@ -132,8 +103,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             const body = await c.req.json();
             const { image } = body;
-            if (!image) return c.json({ success: false, error: "Imagery data payload is required" }, { status: 400 });
-            console.debug('[API] Initiating Llava vision analysis');
+            if (!image) return c.json({ success: false, error: "Imagery data required" }, { status: 400 });
             const response = await fetch(`${c.env.CF_AI_BASE_URL}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -146,26 +116,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                         {
                             role: 'user',
                             content: [
-                                { type: 'text', text: 'Analyze this clinical image for a medical record. Describe morphology, borders, and clinical features concisely.' },
+                                { type: 'text', text: 'Analyze this clinical image for a medical record. Describe morphology concisely.' },
                                 { type: 'image_url', image_url: { url: image } }
                             ]
                         }
                     ]
-                }),
-                signal: AbortSignal.timeout(30000)
+                })
             });
-            if (!response.ok) throw new Error("Vision AI service timed out or failed");
             const result: any = await response.json();
             return c.json({
                 success: true,
                 data: {
-                    analysis: result.choices[0]?.message?.content || "Analysis inconclusive. Ensure image quality is sufficient.",
+                    analysis: result.choices[0]?.message?.content || "Analysis inconclusive.",
                     confidence: 0.94
                 }
             });
         } catch (error) {
-            console.error('[VISION ERROR]', error);
-            return c.json({ success: false, error: "Clinical Vision AI service is temporarily unavailable" }, { status: 503 });
+            return c.json({ success: false, error: "Clinical Vision AI service unavailable" }, { status: 503 });
         }
     });
     app.get('/api/sessions', async (c) => {
