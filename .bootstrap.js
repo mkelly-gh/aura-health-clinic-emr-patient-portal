@@ -80,7 +80,8 @@ function runSetupCommands() {
     const commands = [
     "bun add @tanstack/react-table@^8.20.5",
     "bun add lucide-react framer-motion recharts sonner",
-    "bun add sonner"
+    "bun add sonner",
+    "bun add zod react-hook-form @hookform/resolvers"
 ];
     
     if (commands.length === 0) {
