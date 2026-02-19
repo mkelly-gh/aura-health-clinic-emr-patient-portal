@@ -1,6 +1,6 @@
 /**
  * Core utilities for the Cloudflare Agents template
- * Updated for Phase 11: Stability & Clinical Observability
+ * Updated for Phase 14: Final Stability & Production Hardening
  */
 import type { AppController } from './app-controller';
 export interface Env {
@@ -9,7 +9,7 @@ export interface Env {
     SERPAPI_KEY: string;
     OPENROUTER_API_KEY: string;
     // Use any to bypass brand check recursion issues with complex class hierarchies
-    CHAT_AGENT: DurableObjectNamespace<any>; 
+    CHAT_AGENT: DurableObjectNamespace<any>;
     APP_CONTROLLER: DurableObjectNamespace<AppController>;
     DB: D1Database;
 }

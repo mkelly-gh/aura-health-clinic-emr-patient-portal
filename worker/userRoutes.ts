@@ -3,8 +3,8 @@ import { getAgentByName } from 'agents';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
 import { encryptField, decryptField } from './utils';
-const handleAgentFetch = async (env: Env, sessionId: string, req: Request) => {
-  const agent = await getAgentByName<Env, any>(env.CHAT_AGENT, sessionId);
+const handleAgentFetch = async (env: any, sessionId: string, req: Request): Promise<any> => {
+  const agent = await getAgentByName<any, any>(env.CHAT_AGENT, sessionId);
   const url = new URL(req.url);
   url.pathname = url.pathname.replace(`/api/chat/${sessionId}`, '');
   return agent.fetch(new Request(url.toString(), {

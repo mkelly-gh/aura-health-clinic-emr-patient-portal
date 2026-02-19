@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 import { Send, Loader2, Bot, X, Sparkles, MessageCircle, HelpCircle, Pill, ShieldCheck, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,17 +20,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      loadHistory();
-    }
-  }, [isOpen]);
-  useEffect(() => {
-    if (!isUserScrolling && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, streamingContent, isLoading, isUserScrolling]);
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       const res = await chatService.getMessages();
       if (res.success && res.data) {
@@ -39,7 +29,17 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     } catch (err) {
       console.error("Failed to load chat history", err);
     }
-  };
+  }, []);
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      loadHistory();
+    }
+  }, [isOpen, messages.length, loadHistory]);
+  useEffect(() => {
+    if (!isUserScrolling && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, streamingContent, isLoading, isUserScrolling]);
   const handleSend = async (content?: string) => {
     const textToSend = content || input;
     if (!textToSend.trim() || isLoading) return;
@@ -103,8 +103,8 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
               <X className="h-5 w-5" />
             </Button>
           </div>
-          <ScrollArea 
-            className="flex-1 p-5" 
+          <ScrollArea
+            className="flex-1 p-5"
             ref={scrollAreaRef}
             onScrollCapture={handleScroll}
           >
