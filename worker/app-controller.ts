@@ -26,6 +26,46 @@ export class AppController extends DurableObject<Env> {
       await this.ctx.storage.delete('patients');
     }
   }
+  async upsertPatient(p: any): Promise<void> {
+    const now = Date.now();
+    const mrn = p.mrn || `AURA-${Math.floor(100000 + Math.random() * 900000)}`;
+    const id = p.id || crypto.randomUUID();
+    if (this.env.DB) {
+      await this.env.DB.prepare(`
+        INSERT INTO patients 
+        (id, mrn, ssn, firstName, lastName, dob, gender, bloodType, email, phone, address, diagnoses, medications, vitals, history, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+        firstName=excluded.firstName, lastName=excluded.lastName, diagnoses=excluded.diagnoses, 
+        medications=excluded.medications, vitals=excluded.vitals, history=excluded.history
+      `).bind(
+        id, mrn, p.ssn, p.firstName, p.lastName, p.dob, p.gender, p.bloodType, p.email, p.phone, p.address,
+        typeof p.diagnoses === 'string' ? p.diagnoses : JSON.stringify(p.diagnoses || []),
+        typeof p.medications === 'string' ? p.medications : JSON.stringify(p.medications || []),
+        typeof p.vitals === 'string' ? p.vitals : JSON.stringify(p.vitals || {}),
+        p.history, now
+      ).run();
+    } else {
+      const patientsRaw = await this.ctx.storage.get<string>('patients') || '[]';
+      const patients = JSON.parse(patientsRaw) as any[];
+      const index = patients.findIndex(item => item.id === id);
+      const entry = {
+        ...p,
+        id,
+        mrn,
+        createdAt: now,
+        diagnoses: typeof p.diagnoses === 'string' ? p.diagnoses : JSON.stringify(p.diagnoses || []),
+        medications: typeof p.medications === 'string' ? p.medications : JSON.stringify(p.medications || []),
+        vitals: typeof p.vitals === 'string' ? p.vitals : JSON.stringify(p.vitals || {}),
+      };
+      if (index > -1) {
+        patients[index] = entry;
+      } else {
+        patients.push(entry);
+      }
+      await this.ctx.storage.put('patients', JSON.stringify(patients));
+    }
+  }
   async addSession(sessionId: string, title?: string): Promise<void> {
     const now = Date.now();
     if (this.env.DB) {
@@ -79,21 +119,6 @@ export class AppController extends DurableObject<Env> {
       }
     }
   }
-  async updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
-    if (this.env.DB) {
-      const result = await this.env.DB.prepare('UPDATE sessions SET title = ? WHERE id = ?').bind(title, sessionId).run();
-      return result.success;
-    }
-    const sessionsRaw = await this.ctx.storage.get<string>('sessions') || '[]';
-    const sessions = JSON.parse(sessionsRaw) as any[];
-    const index = sessions.findIndex(s => s.id === sessionId);
-    if (index !== -1) {
-      sessions[index].title = title;
-      await this.ctx.storage.put('sessions', JSON.stringify(sessions));
-      return true;
-    }
-    return false;
-  }
   async seedPatients(patients: Patient[]): Promise<void> {
     if (this.env.DB) {
       const statements = patients.map(p =>
@@ -134,17 +159,18 @@ export class AppController extends DurableObject<Env> {
   async getPatients(search?: string): Promise<any[]> {
     if (this.env.DB) {
       const query = search
-        ? 'SELECT * FROM patients WHERE firstName LIKE ? OR lastName LIKE ? OR mrn LIKE ?'
-        : 'SELECT * FROM patients';
+        ? 'SELECT * FROM patients WHERE firstName LIKE ? OR lastName LIKE ? OR mrn LIKE ? ORDER BY createdAt DESC'
+        : 'SELECT * FROM patients ORDER BY createdAt DESC';
       const params = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
       const { results } = await this.env.DB.prepare(query).bind(...params).all<any>();
       return results || [];
     }
     const patientsRaw = await this.ctx.storage.get<string>('patients') || '[]';
     const patients = JSON.parse(patientsRaw);
-    if (!search) return patients;
+    const sorted = patients.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    if (!search) return sorted;
     const term = search.toLowerCase();
-    return patients.filter((p: any) =>
+    return sorted.filter((p: any) =>
       p.firstName.toLowerCase().includes(term) ||
       p.lastName.toLowerCase().includes(term) ||
       p.mrn.toLowerCase().includes(term)
@@ -152,7 +178,7 @@ export class AppController extends DurableObject<Env> {
   }
   async getPatient(id: string): Promise<any | null> {
     if (this.env.DB) {
-      return await this.env.DB.prepare('SELECT * FROM patients WHERE id = ?').bind(id).first<any>() || null;
+      return await this.env.DB.prepare('SELECT * FROM patients WHERE id = ?').first<any>() || null;
     }
     const patientsRaw = await this.ctx.storage.get<string>('patients') || '[]';
     const patients = JSON.parse(patientsRaw);
@@ -166,7 +192,6 @@ export class AppController extends DurableObject<Env> {
     const sessionsRaw = await this.ctx.storage.get<string>('sessions') || '[]';
     return JSON.parse(sessionsRaw).length;
   }
-
   generatePatients(count: number = 50): Patient[] {
     const FIRST_NAMES = ['James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda','William','Elizabeth'];
     const LAST_NAMES = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez'];
@@ -180,14 +205,12 @@ export class AppController extends DurableObject<Env> {
       {code:'K21.9',description:'Gastro-esophageal reflux disease without esophagitis'}
     ];
     const BLOOD_TYPES = ['A+','O+','B+','AB+','A-','O-','B-','AB-'];
-
     const pseudoEncrypt = (text: string) => btoa(text);
-
     const patients: Patient[] = [];
     for (let i = 0; i < count; i++) {
       const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
       const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
-      const id = (i + 1).toString();
+      const id = crypto.randomUUID();
       const mrn = `AURA-${100000 + i}`;
       const ssnRaw = `${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 89)}-${Math.floor(1000 + Math.random() * 9000)}`;
       const ssn = pseudoEncrypt(ssnRaw);
@@ -199,45 +222,19 @@ export class AppController extends DurableObject<Env> {
       const bloodType = BLOOD_TYPES[Math.floor(Math.random() * BLOOD_TYPES.length)];
       const emailRaw = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
       const email = pseudoEncrypt(emailRaw);
-      const rand = Math.floor(100 + Math.random() * 900).toString();
-      const phone = `555-${rand}-${rand}`;
+      const phone = `555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
       const diagnosisTemplate = DIAGNOSES_TEMPLATES[Math.floor(Math.random() * DIAGNOSES_TEMPLATES.length)];
-      const randMonth = Math.floor(Math.random() * 12);
-      const diagnosisDate = new Date(2023, randMonth, 1).toISOString().split('T')[0];
-      const diagnoses = [{
-        ...diagnosisTemplate,
-        date: diagnosisDate
-      }];
-      const medications = [
-        {name:'Metformin',dosage:'500mg',frequency:'Twice daily',status:'Active' as const},
-        {name:'Lisinopril',dosage:'10mg',frequency:'Once daily',status:'Active' as const}
-      ];
-      const vitals = {
-        height: "5'9\"",
-        weight: "175 lbs",
-        bmi: "25.8",
-        bp: "120/80",
-        hr: "72",
-        temp: "98.6 F"
-      };
-      const history = "Patient has a chronic history of managed hypertension. Routine screening suggested. No known drug allergies.";
-
+      const diagnosisDate = new Date(2023, Math.floor(Math.random() * 12), 1).toISOString().split('T')[0];
       patients.push({
-        id,
-        mrn,
-        ssn,
-        firstName,
-        lastName,
-        dob,
-        gender,
-        bloodType,
-        email,
-        phone,
+        id, mrn, ssn, firstName, lastName, dob, gender, bloodType, email, phone,
         address: `123 ${lastName} St, Medical City, MC 12345`,
-        diagnoses,
-        medications,
-        vitals,
-        history
+        diagnoses: [{ ...diagnosisTemplate, date: diagnosisDate }],
+        medications: [
+          {name:'Metformin',dosage:'500mg',frequency:'Twice daily',status:'Active'},
+          {name:'Lisinopril',dosage:'10mg',frequency:'Once daily',status:'Active'}
+        ],
+        vitals: { height: "5'9\"", weight: "175 lbs", bmi: "25.8", bp: "120/80", hr: "72", temp: "98.6 F" },
+        history: "Initial record created via batch generator."
       });
     }
     return patients;
