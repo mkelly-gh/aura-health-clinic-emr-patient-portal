@@ -30,13 +30,7 @@ export function userRoutes(app: any) {
         try {
             const rawPatients: any[] = await controller.getPatients(search || undefined);
             if (rawPatients.length === 0 && !search) {
-                let newPatients: Patient[] = [];
-                try {
-                    const { generatePatients } = await import('../src/lib/mockData');
-                    newPatients = generatePatients(50);
-                } catch (importError) {
-                    console.error('Mock data import failed:', importError);
-                }
+                const newPatients = controller.generatePatients(50);
                 await controller.seedPatients(newPatients);
                 return c.json({ success: true, data: await controller.getPatients() });
             }
@@ -58,13 +52,7 @@ export function userRoutes(app: any) {
         const force = c.req.query('force') === 'true';
         try {
             if (force) await (controller as any).clearPatients();
-            let newPatients: Patient[] = [];
-            try {
-                const { generatePatients } = await import('../src/lib/mockData');
-                newPatients = generatePatients(50);
-            } catch (importError) {
-                console.error('Mock data import failed:', importError);
-            }
+            const newPatients = controller.generatePatients(50);
             await controller.seedPatients(newPatients);
             return c.json({ success: true, message: "Registry seeded successfully", count: newPatients.length });
         } catch (error) {

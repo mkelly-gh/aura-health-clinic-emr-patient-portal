@@ -166,4 +166,80 @@ export class AppController extends DurableObject<Env> {
     const sessionsRaw = await this.ctx.storage.get<string>('sessions') || '[]';
     return JSON.parse(sessionsRaw).length;
   }
+
+  generatePatients(count: number = 50): Patient[] {
+    const FIRST_NAMES = ['James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda','William','Elizabeth'];
+    const LAST_NAMES = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez'];
+    const DIAGNOSES_TEMPLATES = [
+      {code:'E11.9',description:'Type 2 diabetes mellitus without complications'},
+      {code:'I10',description:'Essential (primary) hypertension'},
+      {code:'E78.5',description:'Hyperlipidemia, unspecified'},
+      {code:'M54.5',description:'Low back pain'},
+      {code:'F41.1',description:'Generalized anxiety disorder'},
+      {code:'J45.909',description:'Unspecified asthma, uncomplicated'},
+      {code:'K21.9',description:'Gastro-esophageal reflux disease without esophagitis'}
+    ];
+    const BLOOD_TYPES = ['A+','O+','B+','AB+','A-','O-','B-','AB-'];
+
+    const pseudoEncrypt = (text: string) => btoa(text);
+
+    const patients: Patient[] = [];
+    for (let i = 0; i < count; i++) {
+      const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+      const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+      const id = (i + 1).toString();
+      const mrn = `AURA-${100000 + i}`;
+      const ssnRaw = `${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 89)}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const ssn = pseudoEncrypt(ssnRaw);
+      const dobYear = 1950 + Math.floor(Math.random() * 50);
+      const dobMonth = (1 + Math.floor(Math.random() * 12)).toString();
+      const dobDay = (1 + Math.floor(Math.random() * 28)).toString();
+      const dob = `${dobYear}-${dobMonth.padStart(2, '0')}-${dobDay.padStart(2, '0')}`;
+      const gender = Math.random() > 0.5 ? 'Male' : 'Female';
+      const bloodType = BLOOD_TYPES[Math.floor(Math.random() * BLOOD_TYPES.length)];
+      const emailRaw = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
+      const email = pseudoEncrypt(emailRaw);
+      const rand = Math.floor(100 + Math.random() * 900).toString();
+      const phone = `555-${rand}-${rand}`;
+      const diagnosisTemplate = DIAGNOSES_TEMPLATES[Math.floor(Math.random() * DIAGNOSES_TEMPLATES.length)];
+      const randMonth = Math.floor(Math.random() * 12);
+      const diagnosisDate = new Date(2023, randMonth, 1).toISOString().split('T')[0];
+      const diagnoses = [{
+        ...diagnosisTemplate,
+        date: diagnosisDate
+      }];
+      const medications = [
+        {name:'Metformin',dosage:'500mg',frequency:'Twice daily',status:'Active' as const},
+        {name:'Lisinopril',dosage:'10mg',frequency:'Once daily',status:'Active' as const}
+      ];
+      const vitals = {
+        height: "5'9\"",
+        weight: "175 lbs",
+        bmi: "25.8",
+        bp: "120/80",
+        hr: "72",
+        temp: "98.6 F"
+      };
+      const history = "Patient has a chronic history of managed hypertension. Routine screening suggested. No known drug allergies.";
+
+      patients.push({
+        id,
+        mrn,
+        ssn,
+        firstName,
+        lastName,
+        dob,
+        gender,
+        bloodType,
+        email,
+        phone,
+        address: `123 ${lastName} St, Medical City, MC 12345`,
+        diagnoses,
+        medications,
+        vitals,
+        history
+      });
+    }
+    return patients;
+  }
 }
