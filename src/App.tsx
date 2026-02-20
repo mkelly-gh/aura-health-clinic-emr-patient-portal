@@ -1,17 +1,21 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { HomePage } from './pages/HomePage';
-import { Dashboard } from './pages/provider/Dashboard';
-import { PatientChart } from './pages/provider/PatientChart';
-import { Portal } from './pages/patient/Portal';
-import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { Outlet } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} errorElement={<RouteErrorBoundary />} />
-      <Route path="/provider" element={<Dashboard />} errorElement={<RouteErrorBoundary />} />
-      <Route path="/provider/patient/:id" element={<PatientChart />} errorElement={<RouteErrorBoundary />} />
-      <Route path="/portal" element={<Portal />} errorElement={<RouteErrorBoundary />} />
-    </Routes>
+    <div className="min-h-screen bg-background font-sans selection:bg-teal-100 selection:text-teal-900">
+      <ThemeToggle />
+      <main className="relative">
+        <Outlet />
+      </main>
+      <Toaster position="top-right" closeButton richColors expand={false} />
+      {/* Global AI Usage Disclaimer - Mandatory for project requirements */}
+      <div className="fixed bottom-2 left-2 z-[100] pointer-events-none opacity-40 hover:opacity-100 transition-opacity">
+        <div className="bg-background/80 backdrop-blur-sm border px-2 py-1 rounded text-[8px] font-bold uppercase tracking-tighter text-muted-foreground shadow-sm">
+          AI Request Limits Apply • Aura Health Clinic Demo
+        </div>
+      </div>
+    </div>
   );
 }

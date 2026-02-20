@@ -8,31 +8,42 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import '@/index.css'
+import App from '@/App'
 import { HomePage } from '@/pages/HomePage'
 import { Dashboard } from '@/pages/provider/Dashboard'
 import { PatientChart } from '@/pages/provider/PatientChart'
 import { Portal } from '@/pages/patient/Portal'
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <HomePage />,
+    element: <App />,
     errorElement: <RouteErrorBoundary />,
-  },
-  {
-    path: "/provider",
-    element: <Dashboard />,
-    errorElement: <RouteErrorBoundary />,
-  },
-  {
-    path: "/provider/patient/:id",
-    element: <PatientChart />,
-    errorElement: <RouteErrorBoundary />,
-  },
-  {
-    path: "/portal",
-    element: <Portal />,
-    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        index: true,
+        element: <HomePage />,
+      },
+      {
+        path: "provider",
+        element: <Dashboard />,
+      },
+      {
+        path: "provider/patient/:id",
+        element: <PatientChart />,
+      },
+      {
+        path: "portal",
+        element: <Portal />,
+      },
+    ],
   },
 ]);
 createRoot(document.getElementById('root')!).render(

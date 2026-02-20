@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, Edit3 } from 'lucide-react';
+import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, CheckCircle2, CloudSync } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PatientForm } from '@/components/provider/PatientForm';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { Patient, DbStatus } from '../../../worker/types';
 export function Dashboard() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -35,12 +36,12 @@ export function Dashboard() {
       console.error("Dashboard sync error", err);
     } finally {
       setLoading(false);
-      setIsRefreshing(false);
+      setTimeout(() => setIsRefreshing(false), 800);
     }
   };
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(true), 20000);
+    const interval = setInterval(() => loadData(true), 30000);
     return () => clearInterval(interval);
   }, []);
   const handleCreatePatient = async (data: any) => {
@@ -53,14 +54,14 @@ export function Dashboard() {
       });
       const result = await res.json();
       if (result.success) {
-        toast.success("New medical record established successfully.");
+        toast.success("Clinical record established successfully.");
         setIsDialogOpen(false);
         await loadData();
       } else {
-        toast.error("Failed to create record: " + result.error);
+        toast.error("Failed to commit record: " + result.error);
       }
     } catch (err) {
-      toast.error("Network error during patient onboarding.");
+      toast.error("Network fault during clinical onboarding.");
     } finally {
       setIsCreating(false);
     }
@@ -71,7 +72,9 @@ export function Dashboard() {
       const res = await fetch('/api/seed-patients?force=true', { method: 'POST', credentials: 'omit' });
       const data = await res.json();
       if (data.success) {
-        toast.success("Clinical registry re-initialized in volatile memory");
+        toast.success("Clinical registry re-initialized in volatile memory", {
+          description: "All 55 simulation records have been restored."
+        });
         await loadData();
       }
     } finally {
@@ -85,47 +88,59 @@ export function Dashboard() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Patient Registry</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-4xl font-black tracking-tight text-foreground">Patient Registry</h1>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Badge variant="outline" className={`border-teal-500/50 font-bold gap-1.5 ${dbStatus?.connected ? 'bg-teal-50/50 text-teal-700' : 'bg-destructive/10 text-destructive'}`}>
-                        <div className={`h-2 w-2 rounded-full animate-pulse ${dbStatus?.connected ? 'bg-teal-500' : 'bg-destructive'}`} />
-                        {dbStatus?.engine || 'VOLATILE'}
+                      <Badge variant="outline" className={cn(
+                        "font-black text-[10px] gap-1.5 px-3 py-1 border shadow-sm transition-all",
+                        dbStatus?.connected 
+                          ? 'bg-teal-50/80 text-teal-700 border-teal-200' 
+                          : 'bg-destructive/10 text-destructive border-destructive/20'
+                      )}>
+                        <div className={cn("h-1.5 w-1.5 rounded-full", dbStatus?.connected ? 'bg-teal-500 animate-pulse' : 'bg-destructive')} />
+                        {dbStatus?.engine || 'MEMORY-LOCAL'}
                       </Badge>
                     </TooltipTrigger>
-                    <TooltipContent className="p-4 w-64">
-                      <div className="text-[10px] space-y-1 font-mono uppercase">
-                        <div className="flex justify-between"><span>Engine:</span> <span className="text-teal-600">{dbStatus?.engine}</span></div>
-                        <div className="flex justify-between"><span>Status:</span> <span className="text-teal-600">IN-MEMORY</span></div>
-                        <div className="flex justify-between"><span>Health:</span> <span className="text-teal-600">{dbStatus?.status}</span></div>
+                    <TooltipContent className="p-4 w-72 bg-white dark:bg-card border-2">
+                      <div className="text-[10px] space-y-2 font-mono uppercase font-black">
+                        <div className="flex justify-between border-b pb-1"><span>Storage Mode:</span> <span className="text-teal-600">Volatile Isolate</span></div>
+                        <div className="flex justify-between border-b pb-1"><span>Sync Status:</span> <span className="text-teal-600">Operational</span></div>
+                        <div className="flex justify-between border-b pb-1"><span>Records:</span> <span className="text-teal-600">{patients.length} Commit(s)</span></div>
+                        <p className="text-[8px] text-muted-foreground leading-tight pt-1 normal-case font-medium">Data is stored in-memory. Persistence is tied to the current Isolate lifecycle.</p>
                       </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-muted-foreground text-sm flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4" /> Secure Volatile In-Memory Layer Active
+              <p className="text-muted-foreground text-sm font-medium flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-teal-600" /> Professional Clinical Environment • {patients.length} Records Loaded
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleSeedRegistry} disabled={isSeeding} className="hidden sm:flex rounded-xl">
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSeedRegistry} 
+                disabled={isSeeding} 
+                className="hidden sm:flex rounded-xl font-bold border-teal-200 hover:bg-teal-50 text-teal-700"
+              >
                 {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <DatabaseZap className="h-4 w-4 mr-2" />}
-                Re-seed Registry
+                Re-seed Simulator
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-teal-700 hover:bg-teal-800 rounded-xl shadow-lg shadow-teal-700/20">
-                    <UserPlus className="h-4 w-4 mr-2" /> New Patient
+                  <Button className="bg-teal-700 hover:bg-teal-800 rounded-xl shadow-lg shadow-teal-700/20 font-bold px-6">
+                    <UserPlus className="h-4 w-4 mr-2" /> New Enrollment
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl rounded-3xl">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold">Patient Onboarding</DialogTitle>
+                <DialogContent className="max-w-2xl rounded-3xl p-8">
+                  <DialogHeader className="mb-6">
+                    <DialogTitle className="text-3xl font-black">Patient Onboarding</DialogTitle>
                   </DialogHeader>
                   <PatientForm onSubmit={handleCreatePatient} isLoading={isCreating} />
                 </DialogContent>
@@ -133,75 +148,102 @@ export function Dashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="shadow-sm border-none bg-teal-50/50 dark:bg-teal-900/10">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Registry Records</CardTitle></CardHeader>
-              <CardContent><div className="text-3xl font-bold text-teal-700">{loading ? '...' : patients.length}</div></CardContent>
+            <Card className="shadow-sm border-none bg-teal-50/50 dark:bg-teal-900/10 transition-transform hover:scale-[1.02]">
+              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Density</CardTitle></CardHeader>
+              <CardContent><div className="text-4xl font-black text-teal-700">{loading ? <Loader2 className="animate-spin h-8 w-8" /> : patients.length}</div></CardContent>
             </Card>
-            <Card className="shadow-sm border-none bg-sky-50/50 dark:bg-sky-900/10">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active Sessions</CardTitle></CardHeader>
-              <CardContent><div className="text-3xl font-bold text-sky-700">{loading ? '...' : dbStatus?.sessionCount || 0}</div></CardContent>
+            <Card className="shadow-sm border-none bg-sky-50/50 dark:bg-sky-900/10 transition-transform hover:scale-[1.02]">
+              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Nodes</CardTitle></CardHeader>
+              <CardContent><div className="text-4xl font-black text-sky-700">{loading ? '...' : (dbStatus?.sessionCount || 1)}</div></CardContent>
             </Card>
-            <Card className="shadow-sm border-none bg-amber-50/50 dark:bg-amber-900/10 md:col-span-2">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Isolate Performance</CardTitle></CardHeader>
+            <Card className="shadow-sm border-none bg-amber-50/50 dark:bg-amber-900/10 md:col-span-2 overflow-hidden relative group">
+              <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                <CloudSync className="h-20 w-20" />
+              </div>
+              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Throughput</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-between">
-                <div className="text-sm font-mono text-amber-700 font-bold uppercase flex items-center gap-2">
-                  <Activity className="h-5 w-5" /> {dbStatus?.engine}
+                <div className="text-lg font-mono text-amber-700 font-black uppercase flex items-center gap-3">
+                  <Activity className="h-6 w-6" /> {dbStatus?.engine || 'LOCAL_ISOLATE'}
                 </div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-amber-600/60 flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> VOLATILE STORAGE MODE
+                <div className="text-[10px] font-black uppercase tracking-widest text-amber-600/60 flex items-center gap-2">
+                  <Zap className="h-3 w-3 fill-current" /> MEMORY-FAST ACCESS
                 </div>
               </CardContent>
             </Card>
           </div>
-          <div className="bg-card border rounded-2xl overflow-hidden shadow-soft">
-            <div className="p-4 border-b flex items-center gap-4 bg-muted/20">
+          <div className="bg-card border rounded-[2rem] overflow-hidden shadow-soft">
+            <div className="p-6 border-b flex items-center gap-6 bg-muted/20">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search registry..." className="pl-9 rounded-xl" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search clinical registry by name or MRN..." 
+                  className="pl-11 h-12 rounded-2xl border-none shadow-inner bg-background focus-visible:ring-teal-500" 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                />
               </div>
-              {isRefreshing && <RefreshCcw className="h-4 w-4 animate-spin text-muted-foreground" />}
-              <Button variant="ghost" size="icon" className="rounded-xl border shadow-sm"><Filter className="h-4 w-4" /></Button>
+              <div className="flex items-center gap-2">
+                 <AnimatePresence>
+                   {isRefreshing && (
+                     <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground pr-2">
+                        <RefreshCcw className="h-3 w-3 animate-spin text-teal-600" />
+                        <span className="uppercase tracking-tighter">Syncing</span>
+                     </div>
+                   )}
+                 </AnimatePresence>
+                 <Button variant="ghost" size="icon" className="rounded-2xl border bg-white dark:bg-card shadow-sm h-12 w-12 hover:bg-teal-50"><Filter className="h-5 w-5" /></Button>
+              </div>
             </div>
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 border-none">
-                  <TableHead className="font-bold">Patient Name</TableHead>
-                  <TableHead className="font-bold">MRN</TableHead>
-                  <TableHead className="hidden md:table-cell font-bold">Gender</TableHead>
-                  <TableHead className="font-bold">Diagnosis</TableHead>
-                  <TableHead className="text-right font-bold">Actions</TableHead>
+                <TableRow className="bg-muted/30 border-none hover:bg-muted/30">
+                  <TableHead className="font-black uppercase tracking-tighter text-[11px] px-8 h-12">Clinical Name</TableHead>
+                  <TableHead className="font-black uppercase tracking-tighter text-[11px] h-12">MRN Identifier</TableHead>
+                  <TableHead className="hidden md:table-cell font-black uppercase tracking-tighter text-[11px] h-12">Patient Gender</TableHead>
+                  <TableHead className="font-black uppercase tracking-tighter text-[11px] h-12">Primary Diagnosis</TableHead>
+                  <TableHead className="text-right font-black uppercase tracking-tighter text-[11px] px-8 h-12">Navigation</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground">Syncing volatile data...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-32 text-muted-foreground font-bold">Synchronizing volatile isolate data...</TableCell></TableRow>
                 ) : filteredPatients.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-24 text-muted-foreground">No records found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-40 text-muted-foreground font-bold">No clinical records match the current criteria.</TableCell></TableRow>
                 ) : (
                   filteredPatients.map((p) => (
-                    <TableRow key={p.id} className="group hover:bg-teal-50/30 dark:hover:bg-teal-900/10 transition-colors border-b last:border-0">
-                      <TableCell className="font-bold">
-                        <Link to={`/provider/patient/${p.id}`} className="hover:text-teal-700">{p.lastName}, {p.firstName}</Link>
+                    <TableRow key={p.id} className="group hover:bg-teal-50/50 dark:hover:bg-teal-900/10 transition-colors border-b last:border-0">
+                      <TableCell className="font-bold px-8 py-5">
+                        <Link to={`/provider/patient/${p.id}`} className="hover:text-teal-700 transition-colors flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-black">{p.firstName[0]}{p.lastName[0]}</div>
+                          <span>{p.lastName}, {p.firstName}</span>
+                        </Link>
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{p.mrn}</TableCell>
-                      <TableCell className="hidden md:table-cell">{p.gender}</TableCell>
+                      <TableCell className="font-mono text-[11px] font-black text-muted-foreground tracking-tighter">{p.mrn}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm font-medium">{p.gender}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 px-2 py-0.5">
-                          {p.diagnoses[0]?.description || 'New Record'}
+                        <Badge variant="secondary" className="bg-teal-100/50 text-teal-800 dark:bg-teal-900/40 dark:text-teal-400 px-3 py-1 font-bold border-none">
+                          {p.diagnoses[0]?.description || 'NEW ENROLLMENT'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Link to={`/provider/patient/${p.id}`}>
-                            <Button variant="ghost" size="sm" className="rounded-xl hover:bg-teal-600 hover:text-white">Chart</Button>
-                          </Link>
-                        </div>
+                      <TableCell className="text-right px-8 py-5">
+                        <Link to={`/provider/patient/${p.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-700 hover:text-white transition-all px-4"
+                          >
+                            Open Chart
+                          </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
+            <div className="p-4 border-t bg-muted/10 text-center">
+               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Total Records in Isolate Memory: {patients.length}</p>
+            </div>
           </div>
         </div>
       </div>
