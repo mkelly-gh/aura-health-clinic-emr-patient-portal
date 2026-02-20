@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, Printer, MoreVertical, FileText, Pill, Clipboard, Microscope, Upload, Loader2, CheckCircle2, TrendingUp, AlertCircle, Heart, Thermometer, Scale } from 'lucide-react';
+import { ChevronLeft, Printer, MoreVertical, FileText, Pill, Clipboard, Microscope, Upload, Loader2, CheckCircle2, TrendingUp, AlertCircle, Heart, Thermometer, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import type { Patient } from '../../../worker/types';
 const MOCK_TRENDS = [
@@ -89,7 +89,12 @@ export function PatientChart() {
               <span className="flex items-center gap-1">Blood: <span className="text-foreground font-bold">{patient.bloodType}</span></span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Link to={`/portal?patientId=${patient.id}`}>
+              <Button variant="outline" size="sm" className="rounded-xl font-bold border-sky-200 text-sky-700 hover:bg-sky-50">
+                <ExternalLink className="h-4 w-4 mr-2" /> View Portal
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" className="rounded-xl font-bold"><Printer className="h-4 w-4 mr-2" /> Export Chart</Button>
             <Button variant="default" className="bg-teal-700 hover:bg-teal-800 rounded-xl px-6 font-bold">Clinical Encounter</Button>
           </div>

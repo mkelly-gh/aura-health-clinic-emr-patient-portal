@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Calendar, FileText, Pill, MessageSquare, ShieldCheck, ArrowRight, Activity, X, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -10,6 +11,8 @@ import { DrAuraChat } from '@/components/patient/DrAuraChat';
 import { chatService } from '@/lib/chat';
 import type { Patient } from '../../../worker/types';
 export function Portal() {
+  const [searchParams] = useSearchParams();
+  const patientIdParam = searchParams.get('patientId');
   const [patient, setPatient] = useState<Patient | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -19,15 +22,18 @@ export function Portal() {
         const res = await fetch('/api/patients', { credentials: 'omit' });
         const data = await res.json();
         if (data.success && data.data.length > 0) {
-          const p = data.data[0];
-          setPatient(p);
+          // Select patient based on URL param or default to the first one
+          const selectedPatient = patientIdParam 
+            ? data.data.find((p: Patient) => p.id === patientIdParam) || data.data[0]
+            : data.data[0];
+          setPatient(selectedPatient);
           // Explicitly initialize AI context for the session
           if (chatService.getSessionId) {
             await fetch(`/api/chat/${chatService.getSessionId()}/init-context`, {
               method: 'POST',
               credentials: 'omit',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ patientId: p.id })
+              body: JSON.stringify({ patientId: selectedPatient.id })
             });
           }
         }
@@ -38,7 +44,7 @@ export function Portal() {
       }
     };
     initPortal();
-  }, []);
+  }, [patientIdParam]);
   if (isInitializing || !patient) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50/30 dark:bg-background">
