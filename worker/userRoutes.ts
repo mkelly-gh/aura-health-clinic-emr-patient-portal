@@ -4,15 +4,14 @@ import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
 import type { Patient, SessionInfo, Message } from "./types";
 // Global volatile in-memory storage
-// Note: This data will be lost when the worker script reloads or the isolate is evicted.
 const inMemoryPatients: Patient[] = [];
 const inMemorySessions: SessionInfo[] = [];
 const inMemoryChatHistory: Map<string, Message[]> = new Map();
 // Helper to get formatted patients
 const getFormattedPatients = (search?: string) => {
-  const filtered = search 
-    ? inMemoryPatients.filter(p => 
-        p.firstName.toLowerCase().includes(search.toLowerCase()) || 
+  const filtered = search
+    ? inMemoryPatients.filter(p =>
+        p.firstName.toLowerCase().includes(search.toLowerCase()) ||
         p.lastName.toLowerCase().includes(search.toLowerCase()) ||
         p.mrn.toLowerCase().includes(search.toLowerCase())
       )
@@ -27,18 +26,15 @@ const getFormattedPatients = (search?: string) => {
   }));
 };
 export function coreRoutes(app: any) {
-  // Handle chat directly without Agent proxy
   app.post('/api/chat/:sessionId/chat', async (c: any) => {
     const sessionId = c.req.param('sessionId');
     const body = await c.req.json();
     const { message, stream, model } = body;
     const history = inMemoryChatHistory.get(sessionId) || [];
-    // Check if we have patient context in history (simulated system message)
-    const hasSystem = history.some(m => m.role === 'system');
     const handler = new ChatHandler(
       c.env.CF_AI_BASE_URL,
       c.env.CF_AI_API_KEY,
-      model || 'google-ai-studio/gemini-2.5-flash'
+      model || 'google-ai-studio/gemini-2.0-flash'
     );
     if (stream) {
       const { readable, writable } = new TransformStream();
@@ -97,9 +93,8 @@ export function userRoutes(app: any) {
   app.get('/api/patients', async (c: any) => {
     const search = c.req.query('q');
     if (inMemoryPatients.length === 0 && !search) {
-      // Auto-seed if empty
       const { generatePatients } = await import('../src/lib/mockData');
-      const seeded = generatePatients(50);
+      const seeded = generatePatients(55);
       inMemoryPatients.push(...seeded);
     }
     return c.json({ success: true, data: getFormattedPatients(search) });
@@ -114,7 +109,7 @@ export function userRoutes(app: any) {
     const newPatient = {
       ...body,
       id: body.id || crypto.randomUUID(),
-      mrn: body.mrn || `AURA-${Math.floor(100000 + Math.random() * 900000)}`,
+      mrn: body.mrn || `AURA-${Math.floor(200000 + Math.random() * 900000)}`,
       ssn: encryptField(body.ssn),
       email: encryptField(body.email)
     };
@@ -125,7 +120,7 @@ export function userRoutes(app: any) {
     const force = c.req.query('force') === 'true';
     if (force) inMemoryPatients.length = 0;
     const { generatePatients } = await import('../src/lib/mockData');
-    inMemoryPatients.push(...generatePatients(50));
+    inMemoryPatients.push(...generatePatients(55));
     return c.json({ success: true });
   });
   app.get('/api/sessions', async (c: any) => {
@@ -136,13 +131,10 @@ export function userRoutes(app: any) {
       success: true,
       data: {
         engine: 'Volatile In-Memory Storage',
-        binding: 'GLOBAL_ISOLATE_VARIABLE',
         connected: true,
-        pingMs: 0,
         patientCount: inMemoryPatients.length,
         sessionCount: inMemorySessions.length,
-        status: 'HEALTHY',
-        schemaVersion: '2.0.0-volatile'
+        status: 'HEALTHY'
       }
     });
   });

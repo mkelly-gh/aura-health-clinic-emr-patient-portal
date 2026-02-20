@@ -1,5 +1,10 @@
-import type { Message, ChatState, SessionInfo } from '../../worker/types';
+import type { Message, ChatState } from '../../worker/types';
 import { v4 as uuid } from 'uuid';
+export const MODELS = [
+  { id: 'google-ai-studio/gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' }
+];
 export interface ChatResponse {
   success: boolean;
   data?: ChatState;
@@ -75,14 +80,6 @@ class ChatService {
   }
   getSessionId(): string {
     return this.sessionId;
-  }
-  newSession(): void {
-    this.sessionId = uuid();
-    this.baseUrl = `/api/chat/${this.sessionId}`;
-  }
-  switchSession(sessionId: string): void {
-    this.sessionId = sessionId;
-    this.baseUrl = `/api/chat/${sessionId}`;
   }
 }
 export const chatService = new ChatService();
