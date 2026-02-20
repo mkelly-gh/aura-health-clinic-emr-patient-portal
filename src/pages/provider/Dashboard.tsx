@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, CheckCircle2, CloudSync } from 'lucide-react';
+import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, CheckCircle2, Sync } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -99,8 +99,8 @@ export function Dashboard() {
                     <TooltipTrigger asChild>
                       <Badge variant="outline" className={cn(
                         "font-black text-[10px] gap-1.5 px-3 py-1 border shadow-sm transition-all",
-                        dbStatus?.connected 
-                          ? 'bg-teal-50/80 text-teal-700 border-teal-200' 
+                        dbStatus?.connected
+                          ? 'bg-teal-50/80 text-teal-700 border-teal-200'
                           : 'bg-destructive/10 text-destructive border-destructive/20'
                       )}>
                         <div className={cn("h-1.5 w-1.5 rounded-full", dbStatus?.connected ? 'bg-teal-500 animate-pulse' : 'bg-destructive')} />
@@ -123,11 +123,11 @@ export function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleSeedRegistry} 
-                disabled={isSeeding} 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSeedRegistry}
+                disabled={isSeeding}
                 className="hidden sm:flex rounded-xl font-bold border-teal-200 hover:bg-teal-50 text-teal-700"
               >
                 {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <DatabaseZap className="h-4 w-4 mr-2" />}
@@ -159,7 +159,7 @@ export function Dashboard() {
             </Card>
             <Card className="shadow-sm border-none bg-amber-50/50 dark:bg-amber-900/10 md:col-span-2 overflow-hidden relative group">
               <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                <CloudSync className="h-20 w-20" />
+                <Sync className="h-20 w-20" />
               </div>
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Throughput</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-between">
@@ -176,11 +176,11 @@ export function Dashboard() {
             <div className="p-6 border-b flex items-center gap-6 bg-muted/20">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search clinical registry by name or MRN..." 
-                  className="pl-11 h-12 rounded-2xl border-none shadow-inner bg-background focus-visible:ring-teal-500" 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)} 
+                <Input
+                  placeholder="Search clinical registry by name or MRN..."
+                  className="pl-11 h-12 rounded-2xl border-none shadow-inner bg-background focus-visible:ring-teal-500"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -228,9 +228,9 @@ export function Dashboard() {
                       </TableCell>
                       <TableCell className="text-right px-8 py-5">
                         <Link to={`/provider/patient/${p.id}`}>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-700 hover:text-white transition-all px-4"
                           >
                             Open Chart
