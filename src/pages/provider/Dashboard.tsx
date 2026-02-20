@@ -71,7 +71,7 @@ export function Dashboard() {
       const res = await fetch('/api/seed-patients?force=true', { method: 'POST', credentials: 'omit' });
       const data = await res.json();
       if (data.success) {
-        toast.success("Clinical registry re-initialized with 50 records");
+        toast.success("Clinical registry re-initialized in volatile memory");
         await loadData();
       }
     } finally {
@@ -95,13 +95,13 @@ export function Dashboard() {
                     <TooltipTrigger asChild>
                       <Badge variant="outline" className={`border-teal-500/50 font-bold gap-1.5 ${dbStatus?.connected ? 'bg-teal-50/50 text-teal-700' : 'bg-destructive/10 text-destructive'}`}>
                         <div className={`h-2 w-2 rounded-full animate-pulse ${dbStatus?.connected ? 'bg-teal-500' : 'bg-destructive'}`} />
-                        {dbStatus?.engine || 'HYBRID'}
+                        {dbStatus?.engine || 'VOLATILE'}
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent className="p-4 w-64">
                       <div className="text-[10px] space-y-1 font-mono uppercase">
-                        <div className="flex justify-between"><span>Binding:</span> <span className="text-teal-600">{dbStatus?.binding}</span></div>
-                        <div className="flex justify-between"><span>Latency:</span> <span className="text-teal-600">{dbStatus?.pingMs}ms</span></div>
+                        <div className="flex justify-between"><span>Engine:</span> <span className="text-teal-600">{dbStatus?.engine}</span></div>
+                        <div className="flex justify-between"><span>Status:</span> <span className="text-teal-600">IN-MEMORY</span></div>
                         <div className="flex justify-between"><span>Health:</span> <span className="text-teal-600">{dbStatus?.status}</span></div>
                       </div>
                     </TooltipContent>
@@ -109,13 +109,13 @@ export function Dashboard() {
                 </TooltipProvider>
               </div>
               <p className="text-muted-foreground text-sm flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4" /> Secure HIPAA Clinical Data Layer Active
+                <ShieldCheck className="h-4 w-4" /> Secure Volatile In-Memory Layer Active
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleSeedRegistry} disabled={isSeeding} className="hidden sm:flex rounded-xl">
                 {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <DatabaseZap className="h-4 w-4 mr-2" />}
-                Sync Node
+                Re-seed Registry
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -142,13 +142,13 @@ export function Dashboard() {
               <CardContent><div className="text-3xl font-bold text-sky-700">{loading ? '...' : dbStatus?.sessionCount || 0}</div></CardContent>
             </Card>
             <Card className="shadow-sm border-none bg-amber-50/50 dark:bg-amber-900/10 md:col-span-2">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Infrastructure Status</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Isolate Performance</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div className="text-sm font-mono text-amber-700 font-bold uppercase flex items-center gap-2">
-                  <Database className="h-5 w-5" /> {dbStatus?.engine || 'Cloudflare Global Edge'}
+                  <Activity className="h-5 w-5" /> {dbStatus?.engine}
                 </div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-amber-600/60 flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> LATENCY: {dbStatus?.pingMs || 0}MS
+                  <Zap className="h-3 w-3" /> VOLATILE STORAGE MODE
                 </div>
               </CardContent>
             </Card>
@@ -174,7 +174,7 @@ export function Dashboard() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground">Syncing records...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground">Syncing volatile data...</TableCell></TableRow>
                 ) : filteredPatients.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-24 text-muted-foreground">No records found.</TableCell></TableRow>
                 ) : (
@@ -192,9 +192,6 @@ export function Dashboard() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => toast.info(`Editing ${p.mrn}`)}>
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
                           <Link to={`/provider/patient/${p.id}`}>
                             <Button variant="ghost" size="sm" className="rounded-xl hover:bg-teal-600 hover:text-white">Chart</Button>
                           </Link>

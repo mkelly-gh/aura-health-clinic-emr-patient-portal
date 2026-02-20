@@ -4,49 +4,29 @@ export interface Env {
     CF_AI_API_KEY: string;
     SERPAPI_KEY: string;
     OPENROUTER_API_KEY: string;
-    // Use any to bypass brand check recursion issues with complex class hierarchies
     CHAT_AGENT: DurableObjectNamespace<any>;
-    APP_CONTROLLER: DurableObjectNamespace<AppController>;
+    APP_CONTROLLER: DurableObjectNamespace<any>;
 }
 /**
- * Get AppController stub for session management
- * Uses a singleton pattern with fixed ID for consistent routing
+ * DEPRECATED: Returns a mock stub as we use volatile in-memory storage now.
  */
-export function getAppController(env: Env): DurableObjectStub<AppController> {
-  const id = env.APP_CONTROLLER.idFromName("controller");
-  return env.APP_CONTROLLER.get(id);
+export function getAppController(env: Env): any {
+  return {
+    addSession: async () => {},
+    updateSessionActivity: async () => {},
+    removeSession: async () => true,
+    getPatients: async () => [],
+    getPatient: async () => null,
+    getPatientCount: async () => 0,
+    seedPatients: async () => {}
+  };
 }
-/**
- * Register a new chat session with the control plane
- */
 export async function registerSession(env: Env, sessionId: string, title?: string): Promise<void> {
-  try {
-    const controller = getAppController(env);
-    await (controller as any).addSession(sessionId, title);
-  } catch (error) {
-    console.error('Failed to register session:', error);
-  }
+  // Logic handled in userRoutes globals now
 }
-/**
- * Update session activity timestamp
- */
 export async function updateSessionActivity(env: Env, sessionId: string): Promise<void> {
-  try {
-    const controller = getAppController(env);
-    await (controller as any).updateSessionActivity(sessionId);
-  } catch (error) {
-    console.error('Failed to update session activity:', error);
-  }
+  // Logic handled in userRoutes globals now
 }
-/**
- * Unregister a session from the control plane
- */
 export async function unregisterSession(env: Env, sessionId: string): Promise<boolean> {
-  try {
-    const controller = getAppController(env);
-    return await (controller as any).removeSession(sessionId);
-  } catch (error) {
-    console.error('Failed to unregister session:', error);
-    return false;
-  }
+  return true;
 }
