@@ -63,6 +63,7 @@ export class ChatHandler {
         if (delta?.tool_calls) {
           for (const deltaToolCall of delta.tool_calls) {
             const index = deltaToolCall.index;
+            if (index === undefined) continue;
             if (!accumulatedToolCalls[index]) {
               accumulatedToolCalls[index] = {
                 id: deltaToolCall.id || `tool_${Date.now()}_${index}`,
@@ -85,14 +86,16 @@ export class ChatHandler {
       }
     } catch (error) {
       console.error('Stream processing error:', error);
-      throw new Error('Stream processing failed');
+      throw new Error('Clinical context synchronization failed during streaming.');
     }
-    if (accumulatedToolCalls.length > 0) {
-      const executedTools = await this.executeToolCalls(accumulatedToolCalls);
-      const finalResponse = await this.generateToolResponse(message, conversationHistory, accumulatedToolCalls, executedTools, systemPromptOverride);
+    // Filter out potential sparse array elements and ensure valid tool calls
+    const validToolCalls = accumulatedToolCalls.filter(tc => tc && tc.function.name);
+    if (validToolCalls.length > 0) {
+      const executedTools = await this.executeToolCalls(validToolCalls);
+      const finalResponse = await this.generateToolResponse(message, conversationHistory, validToolCalls as any, executedTools, systemPromptOverride);
       return { content: finalResponse, toolCalls: executedTools };
     }
-    return { content: fullContent };
+    return { content: fullContent.trim() };
   }
   private async handleNonStreamResponse(
     completion: OpenAI.Chat.Completions.ChatCompletion,
@@ -103,7 +106,7 @@ export class ChatHandler {
     const responseMessage = completion.choices[0]?.message;
     if (!responseMessage) return { content: 'No response from clinical assistant node.' };
     if (!responseMessage.tool_calls) {
-      return { content: responseMessage.content || 'I encountered an unexpected response format.' };
+      return { content: (responseMessage.content || '').trim() || 'I encountered an unexpected empty response.' };
     }
     const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as ChatCompletionMessageFunctionToolCall[]);
     const finalResponse = await this.generateToolResponse(
@@ -128,7 +131,7 @@ export class ChatHandler {
             id: tc.id,
             name: tc.function.name,
             arguments: {},
-            result: { error: `Execution failed: ${error instanceof Error ? error.message : 'Unknown error'}` }
+            result: { error: `Node execution failed: ${error instanceof Error ? error.message : 'Unknown circuit breaker'}` }
           };
         }
       })
@@ -156,7 +159,7 @@ export class ChatHandler {
       ] as any,
       max_tokens: 2000
     });
-    return followUpCompletion.choices[0]?.message?.content || 'Clinical data retrieval processed successfully.';
+    return (followUpCompletion.choices[0]?.message?.content || 'Clinical data retrieval processed successfully.').trim();
   }
   private buildConversationMessages(userMessage: string, history: Message[], systemPromptOverride?: string) {
     const systemContent = systemPromptOverride || 'You are Dr. Aura, the clinical AI assistant for Aura Health Clinic. Provide professional, evidence-based guidance. Always mention you are an AI assistant and not a replacement for a physician.';

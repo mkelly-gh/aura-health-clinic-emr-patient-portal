@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
-import { Send, Loader2, Bot, X, Sparkles, MessageCircle, HelpCircle, Pill, ShieldCheck, Info, User, Check } from 'lucide-react';
+import { Send, Loader2, Bot, X, Sparkles, MessageCircle, HelpCircle, Pill, ShieldCheck, Info, User, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { chatService } from '@/lib/chat';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import type { Message } from '../../../worker/types';
 interface DrAuraChatProps {
   patientId: string;
@@ -17,6 +18,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -46,6 +48,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     if (!textToSend.trim() || isLoading) return;
     setInput('');
     setIsLoading(true);
+    setIsError(false);
     setStreamingContent('');
     setIsUserScrolling(false);
     const userMsg: Message = {
@@ -57,16 +60,21 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     setMessages(prev => [...prev, userMsg]);
     try {
       let accumulated = '';
-      await chatService.sendMessage(textToSend, undefined, (chunk) => {
+      const result = await chatService.sendMessage(textToSend, undefined, (chunk) => {
         accumulated += chunk;
         setStreamingContent(accumulated);
       });
-      // After streaming finishes, refresh to get the official message objects from backend if needed,
-      // but for better UX we just rely on local state or final re-fetch.
+      if (!result.success) {
+        throw new Error(result.error || "Communication failure");
+      }
       await loadHistory();
       setStreamingContent('');
     } catch (err) {
       console.error("Chat message failed", err);
+      setIsError(true);
+      toast.error("Clinical Assistant Node Timed Out", {
+        description: "Please check your network or retry the last request."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -109,10 +117,10 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                 </div>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white hover:bg-white/10 rounded-2xl h-10 w-10 relative z-10 transition-transform active:scale-90" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/10 rounded-2xl h-10 w-10 relative z-10 transition-transform active:scale-90"
               onClick={onClose}
             >
               <X className="h-6 w-6" />
@@ -125,14 +133,17 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
             onScrollCapture={handleScroll}
           >
             <div className="space-y-8 pb-4">
-              {/* Disclaimer */}
-              <motion.div 
+              {/* Disclosure Notice */}
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-sky-50/80 dark:bg-sky-950/30 p-4 rounded-3xl border border-sky-100/50 dark:border-sky-800/30 flex items-start gap-3 text-[11px] text-sky-800 dark:text-sky-300 leading-relaxed shadow-sm"
+                className="bg-amber-50/80 dark:bg-amber-950/30 p-4 rounded-3xl border border-amber-100/50 dark:border-amber-800/30 flex items-start gap-3 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed shadow-sm"
               >
-                <Info className="h-4 w-4 mt-0.5 shrink-0 text-sky-600" />
-                <p>Aura AI uses your encrypted medical history to provide personalized health insights. <strong>Not a replacement for emergency care.</strong></p>
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                <div>
+                  <p className="font-bold uppercase tracking-widest text-[9px] mb-1">AI Usage & Capacity Disclaimer</p>
+                  <p>Dr. Aura is an AI model. Request limits apply. For informational use only; always verify medical advice with a human physician.</p>
+                </div>
               </motion.div>
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-10 px-6">
@@ -163,8 +174,8 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                 </div>
               )}
               {messages.filter(m => m.role !== 'system').map((m, idx) => (
-                <motion.div 
-                  key={m.id} 
+                <motion.div
+                  key={m.id}
                   initial={{ opacity: 0, y: 15, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: 'spring', damping: 20, stiffness: 200 }}
@@ -191,17 +202,17 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                 </motion.div>
               ))}
               {streamingContent && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex justify-start"
                 >
                   <div className="max-w-[85%] rounded-[1.75rem] rounded-tl-none px-5 py-4 text-[14px] leading-relaxed shadow-sm bg-white dark:bg-muted/50 border border-slate-100 dark:border-white/5 text-foreground">
                     {streamingContent}
-                    <motion.span 
+                    <motion.span
                       animate={{ opacity: [0, 1, 0] }}
                       transition={{ repeat: Infinity, duration: 0.8 }}
-                      className="inline-block w-1.5 h-4 ml-1 bg-sky-500 align-middle" 
+                      className="inline-block w-1.5 h-4 ml-1 bg-sky-500 align-middle"
                     />
                   </div>
                 </motion.div>
@@ -214,7 +225,25 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                       <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="h-1.5 w-1.5 rounded-full bg-sky-500" />
                       <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="h-1.5 w-1.5 rounded-full bg-sky-600" />
                     </div>
-                    <span className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-widest italic">Aura is thinking...</span>
+                    <span className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-widest italic">Aura is reasoning...</span>
+                  </div>
+                </div>
+              )}
+              {isError && (
+                <div className="flex justify-start">
+                  <div className="bg-destructive/10 text-destructive rounded-[1.75rem] rounded-tl-none px-5 py-4 flex flex-col gap-3 border border-destructive/20 max-w-[85%]">
+                    <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-tight">
+                      <AlertTriangle className="h-4 w-4" /> Response Failed
+                    </div>
+                    <p className="text-sm">The clinical node encountered a communication error.</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleSend(messages[messages.length - 1]?.content)}
+                      className="rounded-xl border-destructive/20 hover:bg-destructive hover:text-white"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-2" /> Retry Last Message
+                    </Button>
                   </div>
                 </div>
               )}
