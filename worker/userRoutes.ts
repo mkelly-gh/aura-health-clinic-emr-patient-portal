@@ -183,6 +183,10 @@ export function userRoutes(app: any) {
     return c.json({ success: true, data: getFormattedPatients(search) });
   });
   app.get('/api/patients/:id', async (c: any) => {
+    // Critical hardening: Seed if memory is blank (handles deep links)
+    if (inMemoryPatients.length === 0) {
+      inMemoryPatients.push(...generatePatients(55));
+    }
     const p = inMemoryPatients.find(item => item.id === c.req.param('id'));
     if (!p) return c.json({ success: false, error: 'Record not found' }, { status: 404 });
     return c.json({ success: true, data: getFormattedPatients().find(item => item.id === p.id) });

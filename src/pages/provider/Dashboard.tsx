@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, CheckCircle2, Sync } from 'lucide-react';
+import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, CheckCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -159,7 +159,7 @@ export function Dashboard() {
             </Card>
             <Card className="shadow-sm border-none bg-amber-50/50 dark:bg-amber-900/10 md:col-span-2 overflow-hidden relative group">
               <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                <Sync className="h-20 w-20" />
+                <RefreshCcw className="h-20 w-20" />
               </div>
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Throughput</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-between">
