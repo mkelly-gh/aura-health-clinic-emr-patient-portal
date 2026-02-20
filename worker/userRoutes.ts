@@ -3,6 +3,7 @@ import { API_RESPONSES } from './config';
 import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
 import type { Patient, SessionInfo, Message } from "./types";
+import type { Env } from "./core-utils";
 // --- INLINED CLINICAL DATA GENERATION LOGIC ---
 const pseudoEncrypt = (text: string) => btoa(text);
 const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'Sarah', 'David', 'Emily', 'Chris', 'Lisa', 'Thomas', 'Nancy', 'Steven', 'Karen', 'Kevin'];
@@ -86,10 +87,8 @@ function generatePatients(count: number = 55): Patient[] {
     };
   });
 }
-// --- END INLINED LOGIC ---
-// Global volatile in-memory storage
+// --- GLOBAL VOLATILE IN-MEMORY STORAGE ---
 const inMemoryPatients: Patient[] = [];
-const inMemorySessions: SessionInfo[] = [];
 const inMemoryChatHistory: Map<string, Message[]> = new Map();
 // Helper to get formatted patients
 const getFormattedPatients = (search?: string) => {
@@ -109,11 +108,10 @@ const getFormattedPatients = (search?: string) => {
     vitals: typeof p.vitals === 'string' ? JSON.parse(p.vitals) : p.vitals
   }));
 };
-export function coreRoutes(app: any) {
-  app.post('/api/chat/:sessionId/chat', async (c: any) => {
+export function coreRoutes(app: Hono<{ Bindings: Env }>) {
+  app.post('/api/chat/:sessionId/chat', async (c) => {
     const sessionId = c.req.param('sessionId');
-    const body = await c.req.json();
-    const { message, stream, model } = body;
+    const { message, stream, model } = await c.req.json();
     const history = inMemoryChatHistory.get(sessionId) || [];
     const handler = new ChatHandler(
       c.env.CF_AI_BASE_URL,
@@ -126,7 +124,7 @@ export function coreRoutes(app: any) {
       const encoder = new TextEncoder();
       (async () => {
         try {
-          const response = await (handler as any).processMessage(message, history, undefined, (chunk: string) => {
+          const response = await handler.processMessage(message, history, undefined, (chunk: string) => {
             writer.write(encoder.encode(chunk));
           });
           const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: message, timestamp: Date.now() };
@@ -139,30 +137,28 @@ export function coreRoutes(app: any) {
           writer.close();
         }
       })();
-      return new Response(readable, {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-      });
+      return new Response(readable, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
-    const response = await (handler as any).processMessage(message, history);
+    const response = await handler.processMessage(message, history);
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: message, timestamp: Date.now() };
     const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: response.content, timestamp: Date.now() };
     inMemoryChatHistory.set(sessionId, [...history, userMsg, assistantMsg]);
     return c.json({ success: true, data: { messages: inMemoryChatHistory.get(sessionId) } });
   });
-  app.get('/api/chat/:sessionId/messages', async (c: any) => {
+  app.get('/api/chat/:sessionId/messages', (c) => {
     const sessionId = c.req.param('sessionId');
     return c.json({ success: true, data: { messages: inMemoryChatHistory.get(sessionId) || [] } });
   });
-  app.delete('/api/chat/:sessionId/clear', async (c: any) => {
+  app.delete('/api/chat/:sessionId/clear', (c) => {
     const sessionId = c.req.param('sessionId');
     inMemoryChatHistory.set(sessionId, []);
     return c.json({ success: true });
   });
-  app.post('/api/chat/:sessionId/init-context', async (c: any) => {
+  app.post('/api/chat/:sessionId/init-context', async (c) => {
     const { patientId } = await c.req.json();
     const sessionId = c.req.param('sessionId');
     const p = inMemoryPatients.find(p => p.id === patientId);
-    if (!p) return c.json({ success: false, error: 'Patient not found' }, { status: 404 });
+    if (!p) return c.json({ success: false, error: 'Patient not found' }, 404);
     const systemMsg: Message = {
       id: crypto.randomUUID(),
       role: 'system',
@@ -173,25 +169,24 @@ export function coreRoutes(app: any) {
     return c.json({ success: true });
   });
 }
-export function userRoutes(app: any) {
-  app.get('/api/patients', async (c: any) => {
+export function userRoutes(app: Hono<{ Bindings: Env }>) {
+  app.get('/api/patients', (c) => {
     const search = c.req.query('q');
     if (inMemoryPatients.length === 0 && !search) {
-      const seeded = generatePatients(55);
-      inMemoryPatients.push(...seeded);
+      inMemoryPatients.push(...generatePatients(55));
     }
     return c.json({ success: true, data: getFormattedPatients(search) });
   });
-  app.get('/api/patients/:id', async (c: any) => {
-    // Critical hardening: Seed if memory is blank (handles deep links)
+  app.get('/api/patients/:id', (c) => {
     if (inMemoryPatients.length === 0) {
       inMemoryPatients.push(...generatePatients(55));
     }
-    const p = inMemoryPatients.find(item => item.id === c.req.param('id'));
-    if (!p) return c.json({ success: false, error: 'Record not found' }, { status: 404 });
-    return c.json({ success: true, data: getFormattedPatients().find(item => item.id === p.id) });
+    const id = c.req.param('id');
+    const p = inMemoryPatients.find(item => item.id === id);
+    if (!p) return c.json({ success: false, error: 'Record not found' }, 404);
+    return c.json({ success: true, data: getFormattedPatients().find(item => item.id === id) });
   });
-  app.post('/api/patients', async (c: any) => {
+  app.post('/api/patients', async (c) => {
     const body = await c.req.json();
     const newPatient = {
       ...body,
@@ -203,7 +198,7 @@ export function userRoutes(app: any) {
     inMemoryPatients.unshift(newPatient);
     return c.json({ success: true, data: newPatient });
   });
-  app.post('/api/seed-patients', async (c: any) => {
+  app.post('/api/seed-patients', (c) => {
     const force = c.req.query('force') === 'true';
     if (force) {
       inMemoryPatients.length = 0;
@@ -211,10 +206,10 @@ export function userRoutes(app: any) {
     inMemoryPatients.push(...generatePatients(55));
     return c.json({ success: true });
   });
-  app.post('/api/analyze-evidence', async (c: any) => {
+  app.post('/api/analyze-evidence', async (c) => {
     try {
       const { image } = await c.req.json();
-      if (!image) return c.json({ success: false, error: 'Image data required' }, { status: 400 });
+      if (!image) return c.json({ success: false, error: 'Image data required' }, 400);
       const aiResponse = await fetch(`${c.env.CF_AI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -246,17 +241,16 @@ export function userRoutes(app: any) {
       });
     } catch (err) {
       console.error("Vision API Error:", err);
-      return c.json({ success: false, error: "Clinical Vision Engine Unavailable" }, { status: 500 });
+      return c.json({ success: false, error: "Clinical Vision Engine Unavailable" }, 500);
     }
   });
-  app.get('/api/db-status', async (c: any) => {
+  app.get('/api/db-status', (c) => {
     return c.json({
       success: true,
       data: {
         engine: 'Volatile In-Memory Storage',
         connected: true,
         patientCount: inMemoryPatients.length,
-        sessionCount: inMemorySessions.length,
         status: 'HEALTHY'
       }
     });
