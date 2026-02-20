@@ -3,6 +3,7 @@ import { getAgentByName } from 'agents';
 import { API_RESPONSES } from './config';
 import { Env, getAppController } from "./core-utils";
 import { encryptField, decryptField } from './utils';
+import type { Patient } from "./types";
 const handleAgentFetch = async (env: any, sessionId: string, req: Request): Promise<any> => {
   const agent = await getAgentByName<any, any>(env.CHAT_AGENT, sessionId);
   const url = new URL(req.url);
@@ -28,11 +29,12 @@ export function userRoutes(app: any) {
     const controller = getAppController(c.env);
     const search = c.req.query('q');
     try {
-      const rawPatients: any[] = await controller.getPatients(search || undefined);
+      const rawPatients: any[] = await (controller as any).getPatients(search || undefined);
       if (rawPatients.length === 0 && !search) {
-        const newPatients = controller.generatePatients(50);
-        await controller.seedPatients(newPatients);
-        return c.json({ success: true, data: await controller.getPatients() });
+        const newPatients = await (controller as any).generatePatients(50);
+        await (controller as any).seedPatients(newPatients);
+        const seeded = await (controller as any).getPatients();
+        return c.json({ success: true, data: seeded });
       }
       const formatted = rawPatients.map((p: any) => ({
         ...p,
@@ -44,6 +46,7 @@ export function userRoutes(app: any) {
       }));
       return c.json({ success: true, data: formatted });
     } catch (error) {
+      console.error('[DB GET ERROR]', error);
       return c.json({ success: false, error: "Database retrieval failed" }, { status: 500 });
     }
   });
@@ -70,25 +73,26 @@ export function userRoutes(app: any) {
     const force = c.req.query('force') === 'true';
     try {
       if (force) await (controller as any).clearPatients();
-      const newPatients = controller.generatePatients(50);
-      await controller.seedPatients(newPatients);
+      const newPatients: Patient[] = await (controller as any).generatePatients(50);
+      await (controller as any).seedPatients(newPatients);
       return c.json({ success: true, message: "Registry seeded successfully" });
     } catch (error) {
+      console.error('[SEED ERROR]', error);
       return c.json({ success: false, error: "Seeding operation failed" }, { status: 500 });
     }
   });
   app.get('/api/db-status', async (c: any) => {
     try {
       const controller = getAppController(c.env);
-      const { connected, pingMs } = await controller.checkConnection();
-      const patientCount = await controller.getPatientCount();
-      const sessionCount = await controller.getSessionCount();
+      const { connected, pingMs } = await (controller as any).checkConnection();
+      const patientCount = await (controller as any).getPatientCount();
+      const sessionCount = await (controller as any).getSessionCount();
       return c.json({ success: true, data: {
-        engine: c.env.DB ? 'Cloudflare D1 SQL' : 'Durable Object Storage',
-        binding: c.env.DB ? 'DB' : 'APP_CONTROLLER',
+        engine: 'Durable Object Storage',
+        binding: 'APP_CONTROLLER',
         connected, pingMs, patientCount, sessionCount,
         status: connected ? 'HEALTHY' : 'DEGRADED',
-        schemaVersion: '1.4.2-hipaa-prod'
+        schemaVersion: '1.5.0-pure-do'
       }});
     } catch (error) {
       return c.json({ success: false, error: "Status check failed" }, { status: 500 });
@@ -98,7 +102,7 @@ export function userRoutes(app: any) {
     const id = c.req.param('id');
     try {
       const controller = getAppController(c.env);
-      const rawP: any | null = await controller.getPatient(id);
+      const rawP: any | null = await (controller as any).getPatient(id);
       if (!rawP) return c.json({ success: false, error: 'Clinical record not found.' }, { status: 404 });
       const patient = {
         ...rawP,
@@ -147,7 +151,7 @@ export function userRoutes(app: any) {
   app.get('/api/sessions', async (c: any) => {
     try {
       const controller = getAppController(c.env);
-      const sessions = await controller.listSessions();
+      const sessions = await (controller as any).listSessions();
       return c.json({ success: true, data: sessions });
     } catch (error) {
       return c.json({ success: false, error: "Session indexing failed" }, { status: 500 });
