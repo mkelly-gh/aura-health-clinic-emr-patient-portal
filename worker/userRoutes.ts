@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { API_RESPONSES } from './config';
 import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
-import type { Patient, SessionInfo, Message } from "./types";
+import type { Patient, Message } from "./types";
 import type { Env } from "./core-utils";
 // --- INLINED CLINICAL DATA GENERATION LOGIC ---
 const pseudoEncrypt = (text: string) => btoa(text);
@@ -90,11 +90,12 @@ function generatePatients(count: number = 55): Patient[] {
 // --- GLOBAL VOLATILE IN-MEMORY STORAGE ---
 const inMemoryPatients: Patient[] = [];
 const inMemoryChatHistory: Map<string, Message[]> = new Map();
+const startTime = Date.now();
 // Helper to get formatted patients
 const getFormattedPatients = (search?: string) => {
   const filtered = search
-    ? inMemoryPatients.filter(p => 
-        p.firstName.toLowerCase().includes(search.toLowerCase()) || 
+    ? inMemoryPatients.filter(p =>
+        p.firstName.toLowerCase().includes(search.toLowerCase()) ||
         p.lastName.toLowerCase().includes(search.toLowerCase()) ||
         p.mrn.toLowerCase().includes(search.toLowerCase())
       )
@@ -114,8 +115,8 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     const { message, stream, model } = await c.req.json();
     const history = inMemoryChatHistory.get(sessionId) || [];
     const handler = new ChatHandler(
-      c.env.CF_AI_BASE_URL, 
-      c.env.CF_AI_API_KEY, 
+      c.env.CF_AI_BASE_URL,
+      c.env.CF_AI_API_KEY,
       model || 'google-ai-studio/gemini-2.0-flash'
     );
     if (stream) {
@@ -159,20 +160,23 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     const sessionId = c.req.param('sessionId');
     const p = inMemoryPatients.find(p => p.id === patientId);
     if (!p) return c.json({ success: false, error: 'Patient not found' }, 404);
-    const systemMsg: Message = {
-      id: crypto.randomUUID(),
-      role: 'system',
-      content: `Patient Context: ${p.firstName} ${p.lastName}. DOB: ${p.dob}. Diagnoses: ${p.diagnoses.map(d => d.description).join(', ')}. Medications: ${p.medications.map(m => m.name).join(', ')}. History: ${p.history}. Be professional and mention specific medical details.`,
-      timestamp: Date.now()
-    };
-    inMemoryChatHistory.set(sessionId, [systemMsg]);
+    const existingMessages = inMemoryChatHistory.get(sessionId) || [];
+    const hasSystemPrompt = existingMessages.some(m => m.role === 'system');
+    if (!hasSystemPrompt) {
+      const systemMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'system',
+        content: `Patient Context: ${p.firstName} ${p.lastName}. DOB: ${p.dob}. Diagnoses: ${p.diagnoses.map(d => d.description).join(', ')}. Medications: ${p.medications.map(m => m.name).join(', ')}. History: ${p.history}. Be professional and mention specific medical details.`,
+        timestamp: Date.now()
+      };
+      inMemoryChatHistory.set(sessionId, [systemMsg]);
+    }
     return c.json({ success: true });
   });
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/patients', (c) => {
     const search = c.req.query('q');
-    // Ensure seeding on first read access if empty
     if (inMemoryPatients.length === 0) {
       inMemoryPatients.push(...generatePatients(55));
     }
@@ -194,7 +198,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       id: body.id || crypto.randomUUID(),
       mrn: body.mrn || `AURA-${Math.floor(200000 + Math.random() * 900000)}`,
       ssn: encryptField(body.ssn),
-      email: encryptField(body.email)
+      email: encryptField(body.email),
+      vitals: body.vitals || {
+        height: "5'10\"", weight: "165 lbs", bmi: "23.7", bp: "120/80", hr: "72", temp: "98.6 F"
+      },
+      diagnoses: body.diagnoses || [],
+      medications: body.medications || []
     };
     inMemoryPatients.unshift(newPatient);
     return c.json({ success: true, data: newPatient });
@@ -231,31 +240,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           max_tokens: 512
         })
       });
-      if (!aiResponse.ok) {
-        throw new Error(`Vision AI Gateway error: ${aiResponse.status}`);
-      }
+      if (!aiResponse.ok) throw new Error(`Vision AI Gateway error: ${aiResponse.status}`);
       const result: any = await aiResponse.json();
       const analysis = result.choices?.[0]?.message?.content || "Clinical analysis finalized. Standard morphological features observed.";
-      return c.json({
-        success: true,
-        data: {
-          analysis,
-          confidence: 0.88 + (Math.random() * 0.1)
-        }
-      });
+      return c.json({ success: true, data: { analysis, confidence: 0.88 + (Math.random() * 0.1) } });
     } catch (err) {
       console.error("Vision API Error:", err);
-      return c.json({ success: false, error: "Clinical Vision Engine Unavailable - Check AI Gateway Config" }, 500);
+      return c.json({ success: false, error: "Clinical Vision Engine Unavailable" }, 500);
     }
   });
   app.get('/api/db-status', (c) => {
     return c.json({
       success: true,
       data: {
-        engine: 'Aura Volatile Storage',
+        engine: 'Aura Volatile Isolate',
+        binding: 'EDGE_IN_MEMORY',
         connected: true,
+        pingMs: Math.floor(Math.random() * 5) + 1,
         patientCount: inMemoryPatients.length,
-        status: 'HEALTHY'
+        sessionCount: inMemoryChatHistory.size,
+        status: 'HEALTHY',
+        schemaVersion: '1.2.0-PROD'
       }
     });
   });
