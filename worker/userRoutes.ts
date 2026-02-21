@@ -83,6 +83,22 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return res;
   });
+  app.post('/api/seed-patients', async (c) => {
+    const force = c.req.query('force');
+    const controllerId = c.env.APP_CONTROLLER.idFromName('SINGLETON');
+    const controller = c.env.APP_CONTROLLER.get(controllerId);
+    let body = {};
+    const text = await c.req.text();
+    if (text.trim()) {
+      body = JSON.parse(text);
+    }
+    const res = await controller.fetch(new Request(`http://internal/api/patients/seed${force ? `?force=${force}` : ''}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }));
+    return res;
+  });
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.use('/api/patients*', async (c, next) => {
