@@ -4,125 +4,43 @@ import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
 import type { Patient, Message, Diagnosis, Medication } from "./types";
 import type { Env } from "./core-utils";
-// Constants for generating patients
-const FIRST_NAMES = [
-  'John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Lisa', 'William', 'Anna',
-  'James', 'Mary', 'Christopher', 'Patricia', 'Daniel', 'Jennifer', 'Matthew', 'Linda', 'Anthony', 'Barbara',
-  'Mark', 'Elizabeth', 'Andrew', 'Jessica', 'Joseph', 'Susan', 'Steven', 'Margaret', 'Kevin', 'Dorothy',
-  'Brian', 'Helen', 'Timothy', 'Sandra', 'Ronald', 'Donna', 'George', 'Carol', 'Jason', 'Ruth',
-  'Edward', 'Sharon', 'Charles', 'Michelle', 'Thomas', 'Laura', 'Nicholas', 'Sarah', 'Jonathan', 'Betty'
-];
-const LAST_NAMES = [
-  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
-  'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin',
-  'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson',
-  'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores',
-  'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'
-];
+// --- INLINED CLINICAL DATA GENERATION LOGIC ---
+const pseudoEncrypt = (text: string) => btoa(text);
+const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'Sarah', 'David', 'Emily', 'Chris', 'Lisa', 'Thomas', 'Nancy', 'Steven', 'Karen', 'Kevin'];
+const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Hernandez', 'Moore', 'Martin', 'Jackson', 'Thompson', 'White', 'Lopez'];
 const DIAGNOSES_TEMPLATES = [
-  'Hypertension', 'Type 2 Diabetes Mellitus', 'Asthma', 'Major Depressive Disorder', 'Osteoarthritis',
-  'Chronic Obstructive Pulmonary Disease (COPD)', 'Coronary Artery Disease', 'Chronic Kidney Disease',
-  'Rheumatoid Arthritis', 'Anxiety Disorder', 'Migraine', 'Gastroesophageal Reflux Disease (GERD)',
-  'Atrial Fibrillation', 'Hyperlipidemia', 'Obesity', 'Sleep Apnea', 'Peripheral Artery Disease',
-  'Heart Failure', 'Stroke', 'Pneumonia', 'Urinary Tract Infection', 'Acute Coronary Syndrome',
-  'Deep Vein Thrombosis', 'Pulmonary Embolism', 'Sepsis', 'Acute Pancreatitis', 'Cholelithiasis',
-  'Appendicitis', 'Diverticulitis', 'Inflammatory Bowel Disease', 'Cirrhosis', 'Hepatitis C',
-  'HIV/AIDS', 'Tuberculosis', 'Meningitis', 'Encephalitis', 'Epilepsy', 'Parkinson\'s Disease',
-  'Alzheimer\'s Disease', 'Multiple Sclerosis', 'Amyotrophic Lateral Sclerosis (ALS)', 'Cerebral Palsy',
-  'Spinal Cord Injury', 'Traumatic Brain Injury', 'Burn Injury', 'Fracture', 'Dislocation',
-  'Sprain/Strain', 'Concussion', 'Laceration', 'Contusion', 'Hematoma', 'Abscess', 'Cellulitis'
+  { code: 'E11.9', description: 'Type 2 diabetes mellitus without complications' },
+  { code: 'I10', description: 'Essential (primary) hypertension' },
+  { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+  { code: 'M54.5', description: 'Low back pain' },
+  { code: 'F41.1', description: 'Generalized anxiety disorder' },
+  { code: 'J45.909', description: 'Unspecified asthma, uncomplicated' },
+  { code: 'K21.9', description: 'Gastro-esophageal reflux disease without esophagitis' },
+  { code: 'K90.0', description: 'Celiac disease' },
+  { code: 'E55.9', description: 'Vitamin D deficiency, unspecified' },
+  { code: 'G43.909', description: 'Migraine, unspecified, not intractable' },
+  { code: 'G47.33', description: 'Obstructive sleep apnea (adult) (pediatric)' },
+  { code: 'M17.11', description: 'Unilateral primary osteoarthritis, right knee' }
 ];
 const MEDS_LIBRARY = [
-  'Lisinopril', 'Metformin', 'Albuterol', 'Sertraline', 'Ibuprofen', 'Amlodipine', 'Omeprazole',
-  'Simvastatin', 'Losartan', 'Gabapentin', 'Prednisone', 'Warfarin', 'Insulin Glargine', 'Furosemide',
-  'Hydrochlorothiazide', 'Levothyroxine', 'Aspirin', 'Clopidogrel', 'Atorvastatin', 'Metoprolol',
-  'Pantoprazole', 'Escitalopram', 'Tramadol', 'Citalopram', 'Fluoxetine', 'Paroxetine', 'Venlafaxine',
-  'Bupropion', 'Duloxetine', 'Trazodone', 'Zolpidem', 'Lorazepam', 'Alprazolam', 'Clonazepam',
-  'Diazepam', 'Oxycodone', 'Hydrocodone', 'Morphine', 'Fentanyl', 'Codeine', 'Acetaminophen',
-  'Naproxen', 'Celecoxib', 'Diclofenac', 'Meloxicam', 'Allopurinol', 'Colchicine', 'Methotrexate',
-  'Sulfasalazine', 'Azathioprine', 'Cyclosporine', 'Tacrolimus', 'Mycophenolate', 'Rituximab',
-  'Infliximab', 'Adalimumab', 'Etanercept', 'Certolizumab', 'Golimumab', 'Ustekinumab', 'Secukinumab',
-  'Ixekizumab', 'Brodalumab', 'Tildrakizumab', 'Guselkumab', 'Risankizumab', 'Tofacitinib', 'Baricitinib',
-  'Upadacitinib', 'Filgotinib', 'Peficitinib', 'Decitabine', 'Azacitidine', 'Lenalidomide', 'Pomalidomide',
-  'Thalidomide', 'Bortezomib', 'Carfilzomib', 'Ixazomib', 'Daratumumab', 'Elotuzumab', 'Isatuximab',
-  'Belantamab', 'Selinexor', 'Venetoclax', 'Ibrutinib', 'Acalabrutinib', 'Zanubrutinib', 'Idelalisib',
-  'Duvelisib', 'Copanlisib', 'Umbralisib', 'Tazemetostat', 'Larotrectinib', 'Entrectinib', 'Selpercatinib',
-  'Pralsetinib', 'Capmatinib', 'Crizotnib', 'Alectinib', 'Brigatinib', 'Ceritinib', 'Lorlatinib',
-  'Osimertinib', 'Erlotinib', 'Gefitinib', 'Afatinib', 'Dacomitinib', 'Necitumumab', 'Ramucirumab',
-  'Bevacizumab', 'Aflibercept', 'Ranibizumab', 'Brolucizumab', 'Faricimab', 'Pegaptanib', 'Vandetanib',
-  'Cabozantinib', 'Lenvatinib', 'Sorafenib', 'Sunitinib', 'Pazopanib', 'Axitinib', 'Tivozanib',
-  'Nivolumab', 'Pembrolizumab', 'Atezolizumab', 'Durvalumab', 'Avelumab', 'Ipilimumab', 'Tremelimumab',
-  'Cemiplimab', 'Retifanlimab', 'Balstilimab', 'Zalifrelimab', 'Spartalizumab', 'Toripalimab',
-  'Sintilimab', 'Camrelizumab', 'Tislelizumab', 'Dostarlimab', 'Jemperli', 'Lenvatinib', 'Pembrolizumab'
+  { name: 'Metformin', dosage: '500mg', frequency: 'Twice daily' },
+  { name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily' },
+  { name: 'Atorvastatin', dosage: '20mg', frequency: 'Once daily at bedtime' },
+  { name: 'Levothyroxine', dosage: '50mcg', frequency: 'Once daily in morning' },
+  { name: 'Albuterol', dosage: '90mcg/actuation', frequency: 'Every 4 hours as needed' },
+  { name: 'Sertraline', dosage: '50mg', frequency: 'Once daily' },
+  { name: 'Amlodipine', dosage: '5mg', frequency: 'Once daily' },
+  { name: 'Omeprazole', dosage: '20mg', frequency: 'Once daily' }
 ];
 const HISTORY_SNIPPETS = [
-  'Patient reports intermittent chest pain on exertion, relieved by rest.',
-  'History of smoking 1 pack per day for 20 years, quit 5 years ago.',
-  'Allergic to penicillin, hives and anaphylaxis.',
-  'Family history of diabetes mellitus in first-degree relatives.',
-  'Chronic back pain following motor vehicle accident 10 years ago.',
-  'Recurrent urinary tract infections, treated with antibiotics multiple times.',
-  'Episodic migraines triggered by stress and lack of sleep.',
-  'Hypertension diagnosed 5 years ago, currently on medication.',
-  'Depression with suicidal ideation, on antidepressants.',
-  'Asthma exacerbations during pollen season.',
-  'Osteoarthritis in knees, limiting mobility.',
-  'COPD with frequent exacerbations requiring hospitalization.',
-  'Coronary artery disease, status post stent placement.',
-  'Chronic kidney disease stage 3, monitoring creatinine levels.',
-  'Rheumatoid arthritis, on biologic therapy.',
-  'Anxiety disorder, managed with therapy and medication.',
-  'GERD with heartburn and regurgitation.',
-  'Atrial fibrillation, on anticoagulation.',
-  'Hyperlipidemia, on statin therapy.',
-  'Obesity with BMI of 35, attempting weight loss.',
-  'Sleep apnea, using CPAP nightly.',
-  'Peripheral artery disease, claudication on walking.',
-  'Heart failure with reduced ejection fraction.',
-  'History of stroke with residual weakness.',
-  'Pneumonia last winter, fully recovered.',
-  'Recent UTI, treated with ciprofloxacin.',
-  'Acute coronary syndrome, status post angioplasty.',
-  'Deep vein thrombosis in left leg.',
-  'Pulmonary embolism, on anticoagulation.',
-  'Sepsis secondary to UTI.',
-  'Acute pancreatitis, resolved.',
-  'Cholelithiasis, asymptomatic.',
-  'Appendicitis, status post appendectomy.',
-  'Diverticulitis, managed conservatively.',
-  'Inflammatory bowel disease, on mesalamine.',
-  'Cirrhosis due to alcohol abuse.',
-  'Hepatitis C, treated with antivirals.',
-  'HIV/AIDS, on ART.',
-  'Tuberculosis, completed treatment.',
-  'Meningitis in childhood.',
-  'Encephalitis, recovered with sequelae.',
-  'Epilepsy, well-controlled on medication.',
-  'Parkinson\'s disease, on levodopa.',
-  'Alzheimer\'s disease, early stage.',
-  'Multiple sclerosis, relapsing-remitting.',
-  'ALS, progressing slowly.',
-  'Cerebral palsy from birth.',
-  'Spinal cord injury from diving accident.',
-  'Traumatic brain injury from fall.',
-  'Burn injury from house fire.',
-  'Fracture of femur, healed.',
-  'Dislocation of shoulder, recurrent.',
-  'Sprain of ankle, chronic instability.',
-  'Concussion from sports injury.',
-  'Laceration requiring sutures.',
-  'Contusion from blunt trauma.',
-  'Hematoma after fall.',
-  'Abscess drained surgically.',
-  'Cellulitis treated with antibiotics.'
+  "Patient has a chronic history of managed hypertension. Routine screening suggested.",
+  "Diagnosed with childhood asthma; episodes now infrequent and managed with rescue inhaler.",
+  "Family history significant for early-onset cardiovascular disease. Monitoring lipid profile closely.",
+  "Recent onset of migraine headaches; patient keeping a trigger diary for clinical review.",
+  "Management of type 2 diabetes through diet and exercise; medication compliance is excellent.",
+  "Reporting fatigue and joint pain. Vitamin D levels were found to be critically low in recent labs.",
+  "Patient presents with seasonal allergies and occasional acid reflux symptoms."
 ];
-// pseudoEncrypt function
-function pseudoEncrypt(str: string): string {
-  // Simple pseudo-encryption: reverse the string and add a salt
-  const salt = 'AuraHealthClinicSalt';
-  return salt + str.split('').reverse().join('') + salt;
-}
-// generatePatients function
 function generatePatients(count: number = 55): Patient[] {
   return Array.from({ length: count }, (_, i) => {
     const firstName = FIRST_NAMES[i % FIRST_NAMES.length];
@@ -150,7 +68,7 @@ function generatePatients(count: number = 55): Patient[] {
       firstName,
       lastName,
       dob: `${dobYear}-${dobMonth.toString().padStart(2, '0')}-${dobDay.toString().padStart(2, '0')}`,
-      gender: i % 2 === 0 ? 'Male' : 'Female',
+      gender: (i % 2 === 0 ? 'Male' : 'Female') as 'Male' | 'Female',
       bloodType: ['A+', 'O+', 'B+', 'AB+', 'A-', 'O-', 'B-', 'AB-'][i % 8],
       email: pseudoEncrypt(emailRaw),
       phone: `555-${100 + (i % 899)}-${1000 + (i % 8999)}`,
@@ -158,7 +76,7 @@ function generatePatients(count: number = 55): Patient[] {
       diagnoses,
       medications,
       vitals: {
-        height: `${5 + (i % 2)}'${7 + (i % 5)}"`,
+        height: `${5 + (i % 2)}'${7 + (i % 5)}\"`,
         weight: `${140 + (i % 60)} lbs`,
         bmi: (20 + (i % 10)).toString(),
         bp: `${110 + (i % 30)}/${70 + (i % 20)}`,

@@ -1,5 +1,4 @@
 import type { AppController } from './app-controller';
-import type { Patient } from './types';
 export interface Env {
     CF_AI_BASE_URL: string;
     CF_AI_API_KEY: string;
