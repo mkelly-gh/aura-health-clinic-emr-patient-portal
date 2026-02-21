@@ -1,7 +1,6 @@
 import OpenAI from 'openai';
 import type { Message, ToolCall } from './types';
 import { getToolDefinitions, executeTool } from './tools';
-import { ChatCompletionMessageFunctionToolCall } from 'openai/resources/index.mjs';
 export class ChatHandler {
   private client: OpenAI;
   private model: string;
@@ -52,7 +51,7 @@ export class ChatHandler {
     onChunk: (chunk: string) => void
   ) {
     let fullContent = '';
-    const accumulatedToolCalls: ChatCompletionMessageFunctionToolCall[] = [];
+    const accumulatedToolCalls: any[] = [];
     try {
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
@@ -88,14 +87,13 @@ export class ChatHandler {
       console.error('Stream processing error:', error);
       throw new Error('Clinical context synchronization failed during streaming.');
     }
-    // Filter out potential sparse array elements and ensure valid tool calls
-    const validToolCalls = accumulatedToolCalls.filter(tc => tc && tc.function.name);
+    const validToolCalls = accumulatedToolCalls.filter(tc => tc && tc.function && tc.function.name);
     if (validToolCalls.length > 0) {
       const executedTools = await this.executeToolCalls(validToolCalls);
       const finalResponse = await this.generateToolResponse(message, conversationHistory, validToolCalls as any, executedTools, systemPromptOverride);
       return { content: finalResponse, toolCalls: executedTools };
     }
-    return { content: fullContent.trim() };
+    return { content: fullContent.trim() || 'Clinical data retrieval processed successfully.' };
   }
   private async handleNonStreamResponse(
     completion: OpenAI.Chat.Completions.ChatCompletion,
@@ -108,7 +106,7 @@ export class ChatHandler {
     if (!responseMessage.tool_calls) {
       return { content: (responseMessage.content || '').trim() || 'I encountered an unexpected empty response.' };
     }
-    const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as ChatCompletionMessageFunctionToolCall[]);
+    const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as any[]);
     const finalResponse = await this.generateToolResponse(
       message,
       conversationHistory,
@@ -118,7 +116,7 @@ export class ChatHandler {
     );
     return { content: finalResponse, toolCalls };
   }
-  private async executeToolCalls(openAiToolCalls: ChatCompletionMessageFunctionToolCall[]): Promise<ToolCall[]> {
+  private async executeToolCalls(openAiToolCalls: any[]): Promise<ToolCall[]> {
     return Promise.all(
       openAiToolCalls.map(async (tc) => {
         try {
@@ -168,8 +166,5 @@ export class ChatHandler {
       ...history.slice(-8).map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: userMessage }
     ];
-  }
-  updateModel(newModel: string): void {
-    this.model = newModel;
   }
 }

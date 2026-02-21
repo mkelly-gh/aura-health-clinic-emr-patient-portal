@@ -83,6 +83,7 @@ const getFormattedPatients = (search?: string) => {
 };
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   app.post('/api/chat/:sessionId/chat', async (c) => {
+    ensureRegistry();
     const sessionId = c.req.param('sessionId');
     const { message, stream, model } = await c.req.json();
     const history = inMemoryChatHistory.get(sessionId) || [];
@@ -104,7 +105,8 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
           const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: response.content, timestamp: Date.now() };
           inMemoryChatHistory.set(sessionId, [...history, userMsg, assistantMsg]);
         } catch (e) {
-          writer.write(encoder.encode('Circuit break in clinical node.'));
+          console.error("Chat Stream Error", e);
+          writer.write(encoder.encode('Circuit break in clinical node. Assistant is currently offline.'));
         } finally {
           writer.close();
         }
@@ -118,6 +120,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: { messages: inMemoryChatHistory.get(sessionId) } });
   });
   app.get('/api/chat/:sessionId/messages', (c) => {
+    ensureRegistry();
     return c.json({ success: true, data: { messages: inMemoryChatHistory.get(c.req.param('sessionId')) || [] } });
   });
   app.delete('/api/chat/:sessionId/clear', (c) => {
@@ -125,6 +128,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true });
   });
   app.post('/api/chat/:sessionId/init-context', async (c) => {
+    ensureRegistry();
     const { patientId } = await c.req.json();
     const sessionId = c.req.param('sessionId');
     const p = getFormattedPatients().find(p => p.id === patientId);
@@ -184,9 +188,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           max_tokens: 400
         })
       });
+      if (!aiResponse.ok) {
+        console.error("AI Gateway responded with error", await aiResponse.text());
+        return c.json({ success: false, error: "Clinical Vision Node reached capacity or is unreachable." }, 503);
+      }
       const result: any = await aiResponse.json();
       return c.json({ success: true, data: { analysis: result.choices?.[0]?.message?.content || "Analysis complete.", confidence: 0.92 } });
     } catch (err) {
+      console.error("Vision analysis fault", err);
       return c.json({ success: false, error: "Vision Node Unavailable" }, 500);
     }
   });
@@ -197,7 +206,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       data: {
         engine: 'AURA_VOLATILE_ISOLATE',
         binding: 'EDGE_IN_MEMORY',
-        connected: true,
+        connected: inMemoryPatients.length > 0,
         pingMs: 1,
         patientCount: inMemoryPatients.length,
         sessionCount: inMemoryChatHistory.size,
