@@ -1,9 +1,9 @@
 import type { Message, ChatState } from '../../worker/types';
 import { v4 as uuid } from 'uuid';
 export const MODELS = [
+  { id: '@cf/meta/llama-3-8b-instruct', name: 'Llama 3 8B Instruct' },
   { id: 'google-ai-studio/gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' }
+  { id: 'openai/gpt-4o', name: 'GPT-4o' }
 ];
 export interface ChatResponse {
   success: boolean;
@@ -48,7 +48,11 @@ class ChatService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'omit',
-        body: JSON.stringify({ message, model, stream: !!onChunk }),
+        body: JSON.stringify({ 
+          message, 
+          model: model || '@cf/meta/llama-3-8b-instruct', 
+          stream: !!onChunk 
+        }),
       });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);

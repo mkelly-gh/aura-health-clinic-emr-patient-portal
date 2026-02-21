@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, Printer, MoreVertical, FileText, Pill, Clipboard, Microscope, Upload, Loader2, TrendingUp, AlertCircle, Heart, Thermometer, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Pill, Clipboard, Microscope, Upload, Loader2, TrendingUp, Heart, Thermometer, ExternalLink, Activity, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import type { Patient } from '../../../worker/types';
 const vitalsConfig = {
-  hr: { label: "Heart Rate", color: "hsl(var(--chart-2))" },
-  bp_sys: { label: "Systolic BP", color: "hsl(var(--chart-1))" },
+  hr: { label: "Heart Rate", color: "hsl(174, 100%, 29%)" },
+  bp_sys: { label: "Systolic BP", color: "hsl(222, 47%, 11%)" },
 } satisfies ChartConfig;
+const mockVitalsHistory = [
+  { time: '08:00', hr: 72, bp_sys: 118 },
+  { time: '12:00', hr: 75, bp_sys: 122 },
+  { time: '16:00', hr: 82, bp_sys: 125 },
+  { time: '20:00', hr: 70, bp_sys: 120 },
+  { time: '00:00', hr: 68, bp_sys: 115 },
+  { time: '04:00', hr: 65, bp_sys: 112 },
+  { time: '08:00', hr: 74, bp_sys: 119 },
+];
 export function PatientChart() {
   const { id } = useParams();
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -121,6 +129,70 @@ export function PatientChart() {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="trends" className="space-y-4">
+            <Card className="rounded-md border-slate-200 shadow-none">
+              <CardHeader className="p-4 border-b bg-slate-50">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-teal-700" /> 72-Hour Vitals Trending
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <ChartContainer config={vitalsConfig} className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={mockVitalsHistory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="hr" stroke="var(--color-hr)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="bp_sys" stroke="var(--color-bp_sys)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+                <div className="flex justify-center gap-6 mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-teal-700" />
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Heart Rate (bpm)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-slate-900" />
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Systolic BP (mmHg)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="meds" className="space-y-4">
+            <Card className="rounded-md border-slate-200 shadow-none">
+              <CardHeader className="p-4 border-b bg-slate-50">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Pill className="h-4 w-4 text-teal-700" /> Medication List
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {patient.medications.map((m, i) => (
+                  <div key={i} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-slate-50 transition-colors">
+                    <div>
+                      <div className="font-bold text-sm">{m.name}</div>
+                      <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{m.dosage} • {m.frequency}</div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
+                        <div className="text-[9px] font-bold uppercase text-muted-foreground">Provider</div>
+                        <div className="text-[10px] font-bold">Dr. Aura Node-1</div>
+                      </div>
+                      <Badge className={cn(
+                        "text-[9px] font-bold rounded-sm border-none px-2",
+                        m.status === 'Active' ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-500'
+                      )}>
+                        {m.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="evidence" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-2 border-dashed border-slate-200 rounded-lg p-10 bg-slate-50/50 flex flex-col items-center justify-center text-center">
               <input type="file" id="evidence-upload" className="hidden" accept="image/*" onChange={handleFileUpload} />
@@ -136,14 +208,14 @@ export function PatientChart() {
             {analysisResult && (
               <Card className="rounded-lg border-slate-200 shadow-none overflow-hidden bg-white">
                 <div className="flex h-full flex-col sm:flex-row">
-                  {analysisResult.image && <div className="w-full sm:w-2/5 aspect-square bg-slate-100"><img src={analysisResult.image} className="w-full h-full object-cover" /></div>}
+                  {analysisResult.image && <div className="w-full sm:w-2/5 aspect-square bg-slate-100"><img src={analysisResult.image} className="w-full h-full object-cover" alt="Clinical Evidence" /></div>}
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                       <Badge className="bg-teal-700 text-white rounded-sm text-[9px] font-bold">AI INSIGHT</Badge>
                       <span className="text-[9px] font-mono font-bold text-muted-foreground uppercase">{Math.round(analysisResult.confidence * 100)}% CONFIDENCE</span>
                     </div>
                     <div className="flex-1 text-xs leading-relaxed italic text-slate-700 mb-4 bg-slate-50 p-3 rounded border">"{analysisResult.analysis}"</div>
-                    <div className="flex gap-2"><Button size="sm" className="flex-1 h-8 bg-teal-700 hover:bg-teal-800 text-[10px] font-bold uppercase">Append</Button></div>
+                    <div className="flex gap-2"><Button size="sm" className="flex-1 h-8 bg-teal-700 hover:bg-teal-800 text-[10px] font-bold uppercase">Append to Chart</Button></div>
                   </div>
                 </div>
               </Card>

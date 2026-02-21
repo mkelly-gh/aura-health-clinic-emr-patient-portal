@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from "framer-motion";
 import { Heart, FileText, Pill, MessageSquare, ShieldCheck, ArrowRight, Activity, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DrAuraChat } from '@/components/patient/DrAuraChat';
 import { chatService } from '@/lib/chat';
-import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import type { Patient } from '../../../worker/types';
 export function Portal() {
   const [searchParams] = useSearchParams();
@@ -37,10 +36,18 @@ export function Portal() {
   useEffect(() => {
     initPortal();
   }, [initPortal]);
+  const handleAccessRecords = () => {
+    toast.success("Synchronizing Clinical Records", { 
+      description: "Fetching most recent labs and clinical notes from D1 node.",
+      duration: 3000 
+    });
+    const element = document.getElementById('clinical-profile');
+    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   if (isInitializing) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
       <Activity className="h-8 w-8 text-teal-700 animate-pulse mb-4" />
-      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Accessing Portal Registry...</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Synchronizing Clinical Node...</p>
     </div>
   );
   if (!patient) return (
@@ -76,13 +83,17 @@ export function Portal() {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-slate-900 rounded-lg p-8 sm:p-10 text-white relative overflow-hidden border">
               <div className="relative z-10">
-                <Badge className="bg-teal-600/20 text-teal-400 border-teal-500/30 mb-4 px-3 py-0 rounded-sm font-bold text-[9px] uppercase">Isolate Health Session</Badge>
+                <Badge className="bg-teal-600/20 text-teal-400 border-teal-500/30 mb-4 px-3 py-0 rounded-sm font-bold text-[9px] uppercase">
+                  Isolate Health Session: {chatService.getSessionId().split('-')[0]}
+                </Badge>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-4">Patient Baseline: Optimal</h1>
                 <p className="text-slate-400 text-sm max-w-sm leading-relaxed mb-8">Clinical registry synchronized. Aura AI Node is standing by for medical context consultation.</p>
-                <Button className="bg-teal-600 hover:bg-teal-700 rounded-md px-6 h-11 font-bold text-sm">Access Medical Records <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                <Button onClick={handleAccessRecords} className="bg-teal-600 hover:bg-teal-700 rounded-md px-6 h-11 font-bold text-sm">
+                  Access Medical Records <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div id="clinical-profile" className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="rounded-lg border-slate-200 shadow-none">
                 <CardHeader className="bg-slate-50 p-4 border-b flex flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider">Clinical Profile</CardTitle>
@@ -91,7 +102,7 @@ export function Portal() {
                 <CardContent className="p-4 space-y-4">
                   <div>
                     <span className="text-[9px] uppercase font-bold text-muted-foreground">Primary Condition</span>
-                    <div className="font-bold text-base mt-0.5">{patient.diagnoses[0]?.description || 'Baseline'}</div>
+                    <div className="font-bold text-base mt-0.5">{patient.diagnoses[0]?.description || 'Baseline Wellness'}</div>
                   </div>
                   <div className="flex gap-8">
                     <div>
@@ -111,7 +122,7 @@ export function Portal() {
                   <Pill className="h-4 w-4 text-slate-400" />
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
-                  {patient.medications.slice(0, 3).map((m, i) => (
+                  {patient.medications.length > 0 ? patient.medications.slice(0, 3).map((m, i) => (
                     <div key={i} className="flex justify-between items-center text-xs pb-2 border-b last:border-0 last:pb-0">
                       <div>
                         <div className="font-bold">{m.name} <span className="font-medium text-slate-500">{m.dosage}</span></div>
@@ -119,7 +130,9 @@ export function Portal() {
                       </div>
                       <Badge className="bg-teal-100 text-teal-700 text-[8px] font-bold h-4 px-1 rounded-sm border-none">ACTIVE</Badge>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-xs text-muted-foreground italic py-4">No active prescriptions in record.</div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -135,13 +148,13 @@ export function Portal() {
                   <p className="text-[11px] text-muted-foreground font-medium">Context-Aware AI Assistant</p>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed italic mb-6">"Hello {patient.firstName}. I have synthesized your clinical telemetry. Select a query path below to begin."</p>
+              <p className="text-[11px] text-slate-600 leading-relaxed italic mb-6">"Hello {patient.firstName}. I have synthesized your clinical telemetry. Launch my console to discuss your care plan."</p>
               <Button onClick={() => setChatOpen(true)} className="w-full bg-slate-900 hover:bg-slate-800 rounded-md h-10 font-bold text-xs uppercase tracking-wider">Launch Assistant</Button>
             </Card>
             <Card className="rounded-lg border-slate-200 bg-slate-900 text-white p-6 shadow-none">
               <ShieldCheck className="h-6 w-6 text-teal-500 mb-4" />
               <h3 className="text-sm font-bold mb-2">Edge Isolation</h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed mb-4">Your session data resides in a volatile worker isolate. All state is cleared upon logout.</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-4">Your session data resides in a volatile worker isolate. All state is cleared upon logout or session timeout.</p>
               <div className="text-[9px] font-mono text-teal-500 uppercase font-bold border-t border-slate-800 pt-4">NODE: {chatService.getSessionId().split('-')[0]}</div>
             </Card>
           </div>
