@@ -41,7 +41,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
       chatService.initContext(patientId);
       loadHistory();
     }
-  }, [isOpen, messages.length, loadHistory]);
+  }, [isOpen, messages.length, loadHistory, patientId]);
   useEffect(() => {
     if (!isUserScrolling && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
