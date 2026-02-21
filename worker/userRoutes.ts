@@ -138,6 +138,15 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     inMemoryChatHistory.set(sessionId, [systemMsg]);
     return c.json({ success: true });
   });
+  app.post('/api/seed-patients', async (c) => {
+    const force = c.req.query('force') === 'true';
+    if (force || inMemoryPatients.length === 0) {
+      inMemoryPatients.length = 0;
+      inMemoryPatients.push(...generatePatients(55));
+      return c.json({ success: true, count: inMemoryPatients.length, action: 'reseeded' });
+    }
+    return c.json({ success: true, count: inMemoryPatients.length, action: 'none' });
+  });
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/patients', (c) => {
