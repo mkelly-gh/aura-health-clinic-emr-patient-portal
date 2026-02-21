@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
-import { Send, Loader2, Bot, X, ShieldCheck, User, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Bot, X, ShieldCheck, User, AlertCircle, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const loadHistory = useCallback(async () => {
     try {
@@ -31,8 +32,11 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
   useEffect(() => {
     if (isOpen) loadHistory();
   }, [isOpen, loadHistory]);
+  // Enhanced pinning logic for rapid streaming updates
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'auto' });
+    }
   }, [messages, streamingContent, isLoading]);
   const handleSend = async (content?: string) => {
     const textToSend = content || input;
@@ -52,11 +56,12 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
       await loadHistory();
       setStreamingContent('');
     } catch (err) {
-      toast.error("Node Connection Failure");
+      toast.error("Node Connection Failure", { description: "Telemetry link severed during synthesis." });
     } finally {
       setIsLoading(false);
     }
   };
+  const isExecutingTool = streamingContent.includes('[System: Synchronizing Registry Results...]');
   return (
     <AnimatePresence>
       {isOpen && (
@@ -65,7 +70,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'tween', duration: 0.2 }}
-          className="fixed inset-y-0 right-0 w-full sm:w-[400px] bg-white border-l border-slate-200 z-[100] flex flex-col shadow-2xl"
+          className="fixed inset-y-0 right-0 w-full sm:w-[450px] bg-white border-l border-slate-200 z-[100] flex flex-col shadow-2xl"
         >
           <div className="h-14 px-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
@@ -73,8 +78,8 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
               <div>
                 <h3 className="font-black text-[10px] uppercase tracking-[0.2em]">Dr. Aura Assist</h3>
                 <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-                  <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest">Active Node</span>
+                  <div className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
+                  <span className="text-[8px] font-bold text-teal-400 uppercase tracking-widest">Active Node 12-B</span>
                 </div>
               </div>
             </div>
@@ -84,16 +89,20 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
           </div>
           <div className="p-3 bg-amber-50 border-b border-amber-100 flex gap-2 text-[10px] text-amber-900 leading-tight">
             <AlertCircle className="h-3 w-3 shrink-0 text-amber-600" />
-            <p className="font-medium uppercase tracking-tight">Guidance node only. Not for primary diagnosis.</p>
+            <p className="font-medium uppercase tracking-tight">Guidance node only. Not for primary clinical diagnosis or critical care decisions.</p>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" viewportRef={scrollViewportRef}>
             <div className="divide-y divide-slate-100">
               {messages.filter(m => m.role !== 'system').map((m) => (
-                <div key={m.id} className={cn("p-4 text-[11px] leading-relaxed", m.role === 'user' ? 'bg-white' : 'bg-slate-50/80')}>
+                <div 
+                  key={m.id} 
+                  data-clinical-id={m.id}
+                  className={cn("p-4 text-[11px] leading-relaxed", m.role === 'user' ? 'bg-white' : 'bg-slate-50/80')}
+                >
                   <div className="flex items-center gap-2 mb-1.5">
-                    {m.role === 'assistant' ? <Bot className="h-3 w-3 text-teal-700" /> : <User className="h-3 w-3 text-slate-400" />}
+                    {m.role === 'assistant' ? <Bot className="h-3.5 w-3.5 text-teal-700" /> : <User className="h-3.5 w-3.5 text-slate-400" />}
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                      {m.role === 'assistant' ? 'Dr. Aura' : 'Clinical User'}
+                      {m.role === 'assistant' ? 'Dr. Aura Synthesis' : 'Clinical User'}
                     </span>
                     <span className="text-[8px] font-mono text-slate-300 ml-auto">
                       {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
@@ -105,20 +114,28 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
               {streamingContent && (
                 <div className="p-4 text-[11px] leading-relaxed bg-slate-50/80">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Bot className="h-3 w-3 text-teal-700" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Dr. Aura</span>
+                    <Bot className="h-3.5 w-3.5 text-teal-700" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Dr. Aura Synthesis</span>
                   </div>
-                  <div className="text-slate-800 font-medium animate-pulse">{streamingContent}</div>
+                  <div className="text-slate-800 font-medium">{streamingContent}</div>
                 </div>
               )}
             </div>
             {isLoading && !streamingContent && (
-              <div className="p-4 flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin text-teal-600" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Synthesizing...</span>
+              <div className="p-4 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin text-teal-600" />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Querying SQL Registry...</span>
+                </div>
               </div>
             )}
-            <div ref={bottomRef} className="h-4" />
+            {isExecutingTool && (
+              <div className="mx-4 mb-4 p-2 bg-teal-50 border border-teal-100 flex items-center gap-2">
+                <Database className="h-3 w-3 text-teal-600 animate-bounce" />
+                <span className="text-[8px] font-black text-teal-700 uppercase tracking-widest">Retrieving Clinical Data...</span>
+              </div>
+            )}
+            <div ref={bottomRef} className="h-8 w-full" />
           </ScrollArea>
           <div className="p-4 border-t bg-white">
             <div className="flex gap-2">
@@ -134,9 +151,15 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
                 <Send className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <div className="flex items-center justify-center gap-2 mt-3 opacity-40 grayscale">
-               <ShieldCheck className="h-3 w-3 text-teal-700" />
-               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Secure TLS Session</span>
+            <div className="flex items-center justify-center gap-4 mt-3 opacity-40 grayscale">
+               <div className="flex items-center gap-1.5">
+                 <ShieldCheck className="h-3 w-3 text-teal-700" />
+                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">TLS 1.3 SECURE</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                 <Database className="h-3 w-3 text-slate-500" />
+                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">D1_SQL_NODE</span>
+               </div>
             </div>
           </div>
         </motion.div>

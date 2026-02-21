@@ -24,10 +24,14 @@ const MEDS_LIBRARY = [
   { name: 'Sertraline', dosage: '50mg', frequency: 'Once daily' }
 ];
 const HISTORY_SNIPPETS = [
-  "Patient has a chronic history of managed hypertension.",
-  "Diagnosed with childhood asthma; well managed currently.",
-  "Family history significant for cardiovascular disease.",
-  "Management of type 2 diabetes through intensive lifestyle mod."
+  "Patient has a chronic history of managed hypertension. Recent labs show stable kidney function.",
+  "Diagnosed with childhood asthma; well managed currently with rescue inhaler only.",
+  "Family history significant for early-onset cardiovascular disease. Annual cardio screens recommended.",
+  "Management of type 2 diabetes through intensive lifestyle modification and oral therapy.",
+  "History of seasonal allergies and mild eczema. No known drug allergies reported.",
+  "Post-surgical follow-up for appendectomy (2018). No complications noted in registry.",
+  "Regular wellness visits maintained. Patient is a non-smoker with moderate physical activity.",
+  "Chronic low back pain managed via physical therapy. No opioid history in clinical node."
 ];
 async function ensureTables(db: D1Database | undefined) {
   if (!db) throw new Error("Database binding unavailable");
@@ -136,7 +140,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
           await c.env.DB.prepare("INSERT INTO chat_messages (id, sessionId, role, content, timestamp) VALUES (?, ?, ?, ?, ?)").bind(assistantMsgId, sessionId, 'assistant', fullAssistantResponse, Date.now()).run();
         } catch (e) {
           console.error("Stream Error:", e);
-          writer.write(encoder.encode('\n[Clinical Node Communication Interrupted]'));
+          writer.write(encoder.encode('\n\n[Clinical Node Communication Interrupted: Check registry logs]'));
         } finally {
           writer.close();
         }
@@ -259,7 +263,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           temperature: 0.2
         })
       });
+      if (!aiResponse.ok) {
+        throw new Error(`Vision Gateway returned HTTP ${aiResponse.status}`);
+      }
       const result: any = await aiResponse.json();
+      if (result.error) throw new Error(result.error.message || 'Vision analysis failed');
       return c.json({
         success: true,
         data: {
@@ -269,7 +277,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       });
     } catch (err) {
       console.error("AI Vision Error:", err);
-      return c.json({ success: false, error: 'Clinical imagery analysis failed (Vision Node Offline)' }, 500);
+      return c.json({ success: false, error: 'Clinical imagery analysis failed (Vision Node Offline or Degraded)' }, 500);
     }
   });
   app.get('/api/db-status', async (c) => {
@@ -287,7 +295,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         patientCount: pCount?.count || 0,
         sessionCount: sCount?.count || 0,
         status: 'HEALTHY',
-        schemaVersion: '2.3.0-STATIC'
+        schemaVersion: '2.4.0-STABLE'
       }
     });
   });
