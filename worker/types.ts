@@ -46,6 +46,7 @@ export interface Patient {
   medications: Medication[];
   vitals: Vitals;
   history: string;
+  avatarUrl: string;
 }
 export interface PatientContext {
   summary: string;
