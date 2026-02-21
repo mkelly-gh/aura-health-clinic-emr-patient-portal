@@ -51,17 +51,10 @@ export default {
   				}
   			]
   		},
-  		spacing: {
-  			'18': '4.5rem',
-  			'72': '18rem',
-  			'84': '21rem',
-  			'96': '24rem',
-  			'128': '32rem'
-  		},
   		borderRadius: {
-  			lg: '8px',
-  			md: '6px',
-  			sm: '4px'
+  			lg: '4px',
+  			md: '2px',
+  			sm: '1px'
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -97,13 +90,6 @@ export default {
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
   			input: 'hsl(var(--input))',
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
@@ -116,19 +102,10 @@ export default {
   			}
   		},
   		boxShadow: {
-  			soft: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-  			clinical: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  			primary: '0 0 0 1px hsl(var(--primary) / 0.05)'
+  			clinical: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  			'clinical-bold': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
   		},
   		keyframes: {
-  			'fade-in': {
-  				'0%': { opacity: '0' },
-  				'100%': { opacity: '1' }
-  			},
-  			'slide-up': {
-  				'0%': { transform: 'translateY(10px)', opacity: '0' },
-  				'100%': { transform: 'translateY(0)', opacity: '1' }
-  			},
   			'accordion-down': {
   				from: { height: '0' },
   				to: { height: 'var(--radix-accordion-content-height)' }
@@ -139,8 +116,6 @@ export default {
   			}
   		},
   		animation: {
-  			'fade-in': 'fade-in 0.3s ease-out',
-  			'slide-up': 'slide-up 0.2s ease-out',
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		}

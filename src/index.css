@@ -22,7 +22,7 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
     --input: 214 32% 91%;
-    --radius: 0.5rem;
+    --radius: 0.25rem;
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 174 100% 29%;
@@ -31,45 +31,37 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 222 47% 15%;
   }
-  .dark {
-    --background: 222 47% 4%;
-    --foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 17%;
-    --card: 222 47% 4%;
-    --card-foreground: 210 40% 98%;
-    --secondary: 217 33% 12%;
-    --secondary-foreground: 210 40% 98%;
-    --accent: 217 33% 12%;
-    --accent-foreground: 210 40% 98%;
-    --input: 217 33% 17%;
-  }
   * {
     @apply border-border;
   }
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-family: 'Inter', sans-serif;
+    line-height: 1.4;
+    letter-spacing: -0.011em;
   }
 }
 @layer components {
-  .btn-clinical {
-    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+  .clinical-density-table th {
+    @apply py-1.5 px-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-slate-50/50 h-8;
   }
-  .clinical-card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+  .clinical-density-table td {
+    @apply py-1.5 px-4 text-[11px] h-10;
   }
-  .text-clinical-heading {
-    @apply text-foreground font-bold tracking-tight;
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
-  .clinical-table-row {
-    @apply border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted;
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 hover:bg-slate-400 transition-colors;
+    border-radius: 3px;
   }
 }
