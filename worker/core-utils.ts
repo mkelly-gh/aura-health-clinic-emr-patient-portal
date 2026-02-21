@@ -5,10 +5,11 @@ export interface Env {
     OPENROUTER_API_KEY: string;
     CHAT_AGENT: DurableObjectNamespace<any>;
     APP_CONTROLLER: DurableObjectNamespace<any>;
+    DB: D1Database;
 }
 /**
- * DEPRECATED: Returns a mock stub as we use volatile in-memory storage now.
- * This is kept for template compatibility but does not perform data generation.
+ * DEPRECATED: Returns a mock stub as we use D1 SQL storage now.
+ * This is kept for template compatibility.
  */
 export function getAppController(env: Env): any {
   return {
@@ -22,10 +23,10 @@ export function getAppController(env: Env): any {
   };
 }
 export async function registerSession(env: Env, sessionId: string, title?: string): Promise<void> {
-  // Logic handled in userRoutes globals
+  // Persistence now handled by D1 SQL
 }
 export async function updateSessionActivity(env: Env, sessionId: string): Promise<void> {
-  // Logic handled in userRoutes globals
+  // Persistence now handled by D1 SQL
 }
 export async function unregisterSession(env: Env, sessionId: string): Promise<boolean> {
   return true;

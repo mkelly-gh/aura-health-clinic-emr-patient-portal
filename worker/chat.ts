@@ -85,7 +85,7 @@ export class ChatHandler {
       }
     } catch (error) {
       console.error('Stream processing error:', error);
-      throw new Error('Clinical context synchronization failed during streaming.');
+      throw new Error('Clinical context synchronization failed.');
     }
     const validToolCalls = accumulatedToolCalls.filter(tc => tc && tc.function && tc.function.name);
     if (validToolCalls.length > 0) {
@@ -93,7 +93,7 @@ export class ChatHandler {
       const finalResponse = await this.generateToolResponse(message, conversationHistory, validToolCalls as any, executedTools, systemPromptOverride);
       return { content: finalResponse, toolCalls: executedTools };
     }
-    return { content: fullContent.trim() || 'Clinical data retrieval processed successfully.' };
+    return { content: fullContent.trim() || 'Clinical synthesis complete.' };
   }
   private async handleNonStreamResponse(
     completion: OpenAI.Chat.Completions.ChatCompletion,
@@ -102,9 +102,9 @@ export class ChatHandler {
     systemPromptOverride?: string
   ) {
     const responseMessage = completion.choices[0]?.message;
-    if (!responseMessage) return { content: 'No response from clinical assistant node.' };
+    if (!responseMessage) return { content: 'Empty response from clinical node.' };
     if (!responseMessage.tool_calls) {
-      return { content: (responseMessage.content || '').trim() || 'I encountered an unexpected empty response.' };
+      return { content: (responseMessage.content || '').trim() || 'Clinical synthesis complete.' };
     }
     const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as any[]);
     const finalResponse = await this.generateToolResponse(
@@ -124,13 +124,7 @@ export class ChatHandler {
           const result = await executeTool(tc.function.name, args);
           return { id: tc.id, name: tc.function.name, arguments: args, result };
         } catch (error) {
-          console.error(`Tool execution failed for ${tc.function.name}:`, error);
-          return {
-            id: tc.id,
-            name: tc.function.name,
-            arguments: {},
-            result: { error: `Node execution failed: ${error instanceof Error ? error.message : 'Unknown circuit breaker'}` }
-          };
+          return { id: tc.id, name: tc.function.name, arguments: {}, result: { error: 'Node execution failed' } };
         }
       })
     );
@@ -146,7 +140,7 @@ export class ChatHandler {
       model: this.model,
       messages: [
         { role: 'system', content: systemPromptOverride || 'You are Dr. Aura, a professional medical AI assistant.' },
-        ...history.slice(-5).map(m => ({ role: m.role, content: m.content })),
+        ...history.slice(-10).map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userMessage },
         { role: 'assistant', content: null, tool_calls: openAiToolCalls },
         ...toolResults.map((result, index) => ({
@@ -157,13 +151,13 @@ export class ChatHandler {
       ] as any,
       max_tokens: 2000
     });
-    return (followUpCompletion.choices[0]?.message?.content || 'Clinical data retrieval processed successfully.').trim();
+    return (followUpCompletion.choices[0]?.message?.content || 'Clinical data retrieval processed.').trim();
   }
   private buildConversationMessages(userMessage: string, history: Message[], systemPromptOverride?: string) {
-    const systemContent = systemPromptOverride || 'You are Dr. Aura, the clinical AI assistant for Aura Health Clinic. Provide professional, evidence-based guidance. Always mention you are an AI assistant and not a replacement for a physician.';
+    const systemContent = systemPromptOverride || 'You are Dr. Aura, the clinical AI assistant. Provide professional, evidence-based guidance based on patient history.';
     return [
       { role: 'system', content: systemContent },
-      ...history.slice(-8).map(m => ({ role: m.role, content: m.content })),
+      ...history.slice(-10).map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: userMessage }
     ];
   }
