@@ -102,7 +102,7 @@ export function generatePatients(count: number = 55): Patient[] {
       diagnoses,
       medications,
       vitals: {
-        height: `${5 + (i % 2)}'${7 + (i % 5)}\"`,
+        height: `${5 + (i % 2)}'${7 + (i % 5)}"`,
         weight: `${140 + (i % 60)} lbs`,
         bmi: (20 + (i % 10)).toString(),
         bp: `${110 + (i % 30)}/${70 + (i % 20)}`,
