@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DrAuraChat } from '@/components/patient/DrAuraChat';
 import { chatService } from '@/lib/chat';
+import { cn } from '@/lib/utils';
 import type { Patient } from '../../../worker/types';
 export function Portal() {
   const [searchParams] = useSearchParams();
@@ -30,12 +31,15 @@ export function Portal() {
         // Sync AI context
         setIsContextSyncing(true);
         try {
-          await fetch(`/api/chat/${chatService.getSessionId()}/init-context`, {
-            method: 'POST',
-            credentials: 'omit',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ patientId: selectedPatient.id })
-          });
+          const sessionId = chatService.getSessionId?.();
+          if (sessionId) {
+            await fetch(`/api/chat/${sessionId}/init-context`, {
+              method: 'POST',
+              credentials: 'omit',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ patientId: selectedPatient.id })
+            });
+          }
         } catch (ctxErr) {
           console.error("AI Context Sync Failure", ctxErr);
         } finally {
@@ -50,7 +54,7 @@ export function Portal() {
   }, [patientIdParam]);
   useEffect(() => {
     initPortal();
-  }, [initPortal]);
+  }, [patientIdParam]);
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50/30 dark:bg-background">
@@ -181,7 +185,7 @@ export function Portal() {
                 </div>
                 <h3 className="font-bold text-2xl mb-2">Edge Encrypted</h3>
                 <p className="text-sky-100/70 text-sm mb-8 px-4 leading-relaxed">Your data remains in volatile isolate memory, ensuring zero permanent trace of sensitive telemetry.</p>
-                <div className="py-3 bg-black/20 rounded-2xl text-[10px] font-mono tracking-widest text-sky-200 uppercase">PORTAL-ISOLATE-{chatService.getSessionId?.()?.split('-')[0] || 'SYNC'}</div>
+                <div className="py-3 bg-black/20 rounded-2xl text-[10px] font-mono tracking-widest text-sky-200 uppercase">PORTAL-ISOLATE-{chatService.getSessionId?.()?.split('-')[0]?.toUpperCase() || 'SYNC'}</div>
               </CardContent>
             </Card>
             <Card className="rounded-3xl border-none shadow-soft bg-white dark:bg-card">
