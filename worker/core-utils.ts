@@ -24,7 +24,7 @@ export function getAppController(env: Env): any {
 export async function registerSession(env: Env, sessionId: string, title?: string): Promise<void> {
   // Logic handled in userRoutes globals now
 }
-export async function updateSessionActivity(env: Env, sessionId: string): Promise<void> {
+export async function updateSessionActivity(env: Env, sessionId:string): Promise<void> {
   // Logic handled in userRoutes globals now
 }
 export async function unregisterSession(env: Env, sessionId: string): Promise<boolean> {
