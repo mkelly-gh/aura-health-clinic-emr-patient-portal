@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { API_RESPONSES } from './config';
 import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
-import type { Patient, Message } from "./types";
+import type { Patient, Message, Diagnosis, Medication } from "./types";
 import type { Env } from "./core-utils";
 // --- INLINED CLINICAL DATA GENERATION LOGIC ---
 const pseudoEncrypt = (text: string) => btoa(text);
@@ -100,10 +100,11 @@ const getFormattedPatients = (search?: string) => {
         p.mrn.toLowerCase().includes(search.toLowerCase())
       )
     : [...inMemoryPatients];
+  console.log('[getFormattedPatients] Filtered count:', filtered.length, 'search:', search);
   return filtered.map(p => ({
     ...p,
-    ssn: decryptField(p.ssn),
-    email: decryptField(p.email),
+    ssn: p.ssn.startsWith('SSN_') ? decryptField(p.ssn) : atob(p.ssn),
+    email: p.email.startsWith('EMAIL_') ? decryptField(p.email) : atob(p.email),
     diagnoses: typeof p.diagnoses === 'string' ? JSON.parse(p.diagnoses) : p.diagnoses,
     medications: typeof p.medications === 'string' ? JSON.parse(p.medications) : p.medications,
     vitals: typeof p.vitals === 'string' ? JSON.parse(p.vitals) : p.vitals
@@ -158,7 +159,8 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   app.post('/api/chat/:sessionId/init-context', async (c) => {
     const { patientId } = await c.req.json();
     const sessionId = c.req.param('sessionId');
-    const p = inMemoryPatients.find(p => p.id === patientId);
+    const formattedPatients = getFormattedPatients();
+    const p = formattedPatients.find(p => p.id === patientId);
     if (!p) return c.json({ success: false, error: 'Patient not found' }, 404);
     const existingMessages = inMemoryChatHistory.get(sessionId) || [];
     const hasSystemPrompt = existingMessages.some(m => m.role === 'system');
@@ -166,7 +168,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
       const systemMsg: Message = {
         id: crypto.randomUUID(),
         role: 'system',
-        content: `Patient Context: ${p.firstName} ${p.lastName}. DOB: ${p.dob}. Diagnoses: ${p.diagnoses.map(d => d.description).join(', ')}. Medications: ${p.medications.map(m => m.name).join(', ')}. History: ${p.history}. Be professional and mention specific medical details.`,
+        content: `Patient Context: ${p.firstName} ${p.lastName}. DOB: ${p.dob}. Diagnoses: ${p.diagnoses.map((d: Diagnosis) => d.description).join(', ')}. Medications: ${p.medications.map((m: Medication) => m.name).join(', ')}. History: ${p.history}. Be professional and mention specific medical details.`,
         timestamp: Date.now()
       };
       inMemoryChatHistory.set(sessionId, [systemMsg]);
@@ -177,8 +179,10 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/patients', (c) => {
     const search = c.req.query('q');
+    console.log('[API/PATIENTS] Request received, current length:', inMemoryPatients.length);
     if (inMemoryPatients.length === 0) {
       inMemoryPatients.push(...generatePatients(55));
+      console.log('[API/PATIENTS] Generated 55 patients, new length:', inMemoryPatients.length);
     }
     return c.json({ success: true, data: getFormattedPatients(search) });
   });
@@ -189,7 +193,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const id = c.req.param('id');
     const p = inMemoryPatients.find(item => item.id === id);
     if (!p) return c.json({ success: false, error: 'Record not found' }, 404);
-    return c.json({ success: true, data: getFormattedPatients().find(item => item.id === id) });
+    const formattedPatient = getFormattedPatients().find(item => item.id === id);
+    return c.json({ success: true, data: formattedPatient });
   });
   app.post('/api/patients', async (c) => {
     const body = await c.req.json();
@@ -206,7 +211,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       medications: body.medications || []
     };
     inMemoryPatients.unshift(newPatient);
-    return c.json({ success: true, data: newPatient });
+    const formattedNewPatient = {
+      ...newPatient,
+      ssn: decryptField(newPatient.ssn),
+      email: decryptField(newPatient.email)
+    };
+    return c.json({ success: true, data: formattedNewPatient });
   });
   app.post('/api/seed-patients', (c) => {
     const force = c.req.query('force') === 'true';
@@ -250,6 +260,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
   app.get('/api/db-status', (c) => {
+    console.log('[API/DB-STATUS] inMemoryPatients.length:', inMemoryPatients.length);
     return c.json({
       success: true,
       data: {
