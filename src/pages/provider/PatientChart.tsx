@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { cn } from '@/lib/utils';
 import type { Patient } from '../../../worker/types';
 const vitalsConfig = {
   hr: { label: "Heart Rate", color: "hsl(174, 100%, 29%)" },
