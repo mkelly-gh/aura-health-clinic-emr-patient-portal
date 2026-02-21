@@ -76,7 +76,7 @@ async function seedPatients(db: D1Database, force = false) {
       const ssnRaw = `000-00-${1000 + idx}`;
       const emailRaw = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@aura.clinic`;
       return {
-        id: (idx + 1).toString(),
+        id: crypto.randomUUID(),
         mrn: `AURA-${200000 + idx}`,
         ssn: btoa(ssnRaw),
         firstName,
