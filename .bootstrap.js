@@ -82,7 +82,8 @@ function runSetupCommands() {
     "bun add lucide-react framer-motion recharts sonner zod react-hook-form @hookform/resolvers openai",
     "bun add sonner",
     "bun add zod react-hook-form @hookform/resolvers",
-    "bun add recharts@2.15.4"
+    "bun add recharts@2.15.4",
+    "bun add openai uuid"
 ];
     
     if (commands.length === 0) {
