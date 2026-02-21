@@ -23,7 +23,6 @@ export function Dashboard() {
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-  // Use a ref for search to prevent unnecessary effect triggers but allow debounce
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const loadData = useCallback(async (silent = false, query = search) => {
     if (!silent) setLoading(true);
@@ -44,7 +43,6 @@ export function Dashboard() {
       setTimeout(() => setIsRefreshing(false), 600);
     }
   }, [search]);
-  // Handle debounced search
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
@@ -54,12 +52,11 @@ export function Dashboard() {
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [search, loadData]);
-  // Initial data load and polling
   useEffect(() => {
     loadData();
     const interval = setInterval(() => loadData(true), 20000);
     return () => clearInterval(interval);
-  }, []); // Only on mount
+  }, [loadData]);
   const handleCreatePatient = async (data: any) => {
     setIsCreating(true);
     try {
@@ -70,7 +67,7 @@ export function Dashboard() {
       });
       const result = await res.json();
       if (result.success) {
-        toast.success("SQL record committed successfully.");
+        toast.success("SQL record committed.");
         setIsDialogOpen(false);
         await loadData();
       }
@@ -86,9 +83,7 @@ export function Dashboard() {
       const res = await fetch('/api/seed-patients?force=true', { method: 'POST', credentials: 'omit' });
       const data = await res.json();
       if (data.success) {
-        toast.success("SQL Registry Re-initialized", {
-          description: `All records migrated to D1 persistence layer.`
-        });
+        toast.success("SQL Registry Re-initialized");
         await loadData();
       }
     } finally {
@@ -98,131 +93,125 @@ export function Dashboard() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
-        <div className="space-y-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1">
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-4xl font-black tracking-tight text-foreground">Patient Registry</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Patient Registry</h1>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Badge variant="outline" className={cn(
-                        "font-black text-[10px] gap-1.5 px-3 py-1 border shadow-sm transition-all cursor-help",
-                        dbStatus?.connected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-destructive/10 text-destructive border-destructive/20'
+                        "font-mono text-[10px] gap-1.5 px-2 py-0.5 border transition-all cursor-help",
+                        dbStatus?.connected ? 'bg-slate-50 text-teal-700 border-teal-200' : 'bg-destructive/5 text-destructive border-destructive/10'
                       )}>
-                        <div className={cn("h-1.5 w-1.5 rounded-full", dbStatus?.connected ? 'bg-emerald-500 animate-pulse' : 'bg-destructive')} />
-                        {dbStatus?.engine || 'SQL-PROD'}
+                        <div className={cn("h-1.5 w-1.5 rounded-full", dbStatus?.connected ? 'bg-teal-500' : 'bg-destructive')} />
+                        {dbStatus?.engine || 'D1-SQL'}
                       </Badge>
                     </TooltipTrigger>
-                    <TooltipContent className="p-4 w-72 bg-white dark:bg-card border shadow-xl">
-                      <div className="text-[10px] space-y-2 font-mono uppercase font-black">
-                        <div className="flex justify-between border-b pb-1"><span>Database:</span> <span className="text-emerald-600">{dbStatus?.binding || 'D1'}</span></div>
-                        <div className="flex justify-between border-b pb-1"><span>Ping:</span> <span className="text-emerald-600">{dbStatus?.pingMs}ms</span></div>
-                        <div className="flex justify-between border-b pb-1"><span>Version:</span> <span className="text-emerald-600">{dbStatus?.schemaVersion}</span></div>
-                        <p className="text-[8px] text-muted-foreground leading-tight pt-1 normal-case font-medium font-sans">Persistence Layer: Cloudflare D1 SQL.</p>
-                      </div>
+                    <TooltipContent className="p-3 text-[10px] font-mono">
+                      PING: {dbStatus?.pingMs}ms | VER: {dbStatus?.schemaVersion}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-muted-foreground text-sm font-medium flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Persistent SQL Infrastructure • {dbStatus?.patientCount ?? 0} Global Records
+              <p className="text-muted-foreground text-xs mt-1 font-medium">
+                Clinical Node: {dbStatus?.binding} • Total Records: {dbStatus?.patientCount ?? 0}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={handleSeedRegistry} disabled={isSeeding} className="rounded-xl font-bold border-emerald-200 hover:bg-emerald-50 text-emerald-700">
-                {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <DatabaseZap className="h-4 w-4 mr-2" />}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleSeedRegistry} disabled={isSeeding} className="text-xs font-bold border-slate-200">
+                {isSeeding ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <DatabaseZap className="h-3.5 w-3.5 mr-2" />}
                 Sync Registry
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-teal-700 hover:bg-teal-800 rounded-xl shadow-lg font-bold px-6">
-                    <UserPlus className="h-4 w-4 mr-2" /> New Enrollment
+                  <Button size="sm" className="bg-teal-700 hover:bg-teal-800 font-bold text-xs">
+                    <UserPlus className="h-3.5 w-3.5 mr-2" /> New Enrollment
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl rounded-3xl p-8">
-                  <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Clinical Enrollment</DialogTitle></DialogHeader>
+                <DialogContent className="max-w-2xl p-6">
+                  <DialogHeader className="mb-4"><DialogTitle className="text-xl font-bold">Clinical Enrollment</DialogTitle></DialogHeader>
                   <PatientForm onSubmit={handleCreatePatient} isLoading={isCreating} />
                 </DialogContent>
               </Dialog>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="shadow-sm border-none bg-emerald-50/50 dark:bg-emerald-900/10 transition-colors">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SQL Row Count</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-emerald-700">{dbStatus?.patientCount ?? 0}</div></CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="rounded-md border-slate-200 shadow-none">
+              <CardHeader className="p-4 pb-2"><CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">SQL Rows</CardTitle></CardHeader>
+              <CardContent className="p-4 pt-0"><div className="text-2xl font-bold">{dbStatus?.patientCount ?? 0}</div></CardContent>
             </Card>
-            <Card className="shadow-sm border-none bg-sky-50/50 dark:bg-sky-900/10 transition-colors">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Sessions</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-sky-700">{dbStatus?.sessionCount ?? 0}</div></CardContent>
+            <Card className="rounded-md border-slate-200 shadow-none">
+              <CardHeader className="p-4 pb-2"><CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Isolate Sessions</CardTitle></CardHeader>
+              <CardContent className="p-4 pt-0"><div className="text-2xl font-bold">{dbStatus?.sessionCount ?? 0}</div></CardContent>
             </Card>
-            <Card className="shadow-sm border-none bg-amber-50/50 dark:bg-amber-900/10 md:col-span-2 transition-colors">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Infrastructure Node</CardTitle></CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div className="text-lg font-mono text-amber-700 font-black uppercase flex items-center gap-3">
-                  <Activity className="h-6 w-6" /> {dbStatus?.binding || 'CLOUDFLARE_D1'}
+            <Card className="rounded-md border-slate-200 shadow-none md:col-span-2">
+              <CardHeader className="p-4 pb-2"><CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Infrastructure</CardTitle></CardHeader>
+              <CardContent className="p-4 pt-0 flex items-center justify-between">
+                <div className="text-sm font-mono font-bold flex items-center gap-2 text-teal-800">
+                  <ShieldCheck className="h-4 w-4" /> CLOUDFLARE_D1_PROD
                 </div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-amber-600/60 flex flex-col items-end">
-                   <div className="flex items-center gap-2"><Zap className="h-3 w-3 fill-current" /> SQL-SYNC {dbStatus?.pingMs}ms</div>
-                   <span className="text-[8px] opacity-40 mt-1">{dbStatus?.schemaVersion}</span>
+                <div className="text-[9px] font-bold text-muted-foreground uppercase flex items-center gap-2">
+                   <Zap className="h-3 w-3 text-amber-500" /> SYNCED {dbStatus?.pingMs}ms
                 </div>
               </CardContent>
             </Card>
           </div>
-          <div className="bg-card border rounded-[2rem] overflow-hidden shadow-soft">
-            <div className="p-6 border-b flex items-center gap-6 bg-muted/20">
+          <Card className="rounded-md border-slate-200 shadow-none overflow-hidden">
+            <div className="p-4 border-b flex items-center gap-4 bg-slate-50">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Query SQL Registry by name or MRN..."
-                  className="pl-11 h-12 rounded-2xl border-none shadow-inner bg-background focus-visible:ring-emerald-500 text-sm font-medium"
+                  placeholder="Query by Name or MRN..."
+                  className="pl-9 h-9 text-xs border-slate-200 focus-visible:ring-teal-600 bg-white"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                  {isRefreshing && (
-                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 text-[10px] font-black text-muted-foreground pr-2">
-                      <RefreshCcw className="h-3 w-3 animate-spin text-emerald-600" />
-                      <span className="uppercase tracking-widest">Querying SQL</span>
+                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-[10px] font-bold text-teal-600">
+                      <RefreshCcw className="h-3 w-3 animate-spin" />
+                      <span>SQL QUERYING</span>
                    </motion.div>
                  )}
               </AnimatePresence>
             </div>
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="font-black uppercase tracking-tighter text-[11px] px-8">Clinical Name</TableHead>
-                  <TableHead className="font-black uppercase tracking-tighter text-[11px]">MRN Identifier</TableHead>
-                  <TableHead className="hidden md:table-cell font-black uppercase tracking-tighter text-[11px]">Gender</TableHead>
-                  <TableHead className="font-black uppercase tracking-tighter text-[11px]">Primary Diagnosis</TableHead>
-                  <TableHead className="text-right font-black uppercase tracking-tighter text-[11px] px-8">Action</TableHead>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="text-[10px] font-bold uppercase px-6 h-10">Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase h-10">MRN</TableHead>
+                  <TableHead className="hidden md:table-cell text-[10px] font-bold uppercase h-10">Gender</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase h-10">Primary Diagnosis</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold uppercase px-6 h-10">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-32 text-muted-foreground font-bold italic">Synchronizing SQL production records...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-xs text-muted-foreground">Synchronizing records...</TableCell></TableRow>
                 ) : patients.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-40 text-muted-foreground font-bold italic">No matching clinical records found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-xs text-muted-foreground">No matching records.</TableCell></TableRow>
                 ) : (
                   patients.map((p) => (
-                    <TableRow key={p.id} className="group hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-colors">
-                      <TableCell className="font-bold px-8 py-5">
-                        <Link to={`/provider/patient/${p.id}`} className="hover:text-emerald-700 transition-colors flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-black">{p.firstName[0]}{p.lastName[0]}</div>
-                          <span className="truncate max-w-[180px]">{p.lastName}, {p.firstName}</span>
+                    <TableRow key={p.id} className="hover:bg-slate-50 border-slate-100">
+                      <TableCell className="px-6 py-3 font-semibold text-xs">
+                        <Link to={`/provider/patient/${p.id}`} className="hover:text-teal-700 flex items-center gap-2">
+                          <div className="h-6 w-6 rounded bg-slate-100 flex items-center justify-center text-[9px] font-bold text-slate-500 uppercase">{p.firstName[0]}{p.lastName[0]}</div>
+                          {p.lastName}, {p.firstName}
                         </Link>
                       </TableCell>
-                      <TableCell className="font-mono text-[11px] font-black text-muted-foreground tracking-tighter">{p.mrn}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm font-medium">{p.gender}</TableCell>
+                      <TableCell className="font-mono text-[10px] font-bold text-muted-foreground">{p.mrn}</TableCell>
+                      <TableCell className="hidden md:table-cell text-xs">{p.gender}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="bg-emerald-100/50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 px-3 py-1 font-bold border-none whitespace-nowrap">
-                          {p.diagnoses[0]?.description || 'SQL-RECORD'}
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 text-[9px] font-bold px-2 py-0 rounded-sm">
+                          {p.diagnoses[0]?.description || 'N/A'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right px-8 py-5">
+                      <TableCell className="text-right px-6 py-3">
                         <Link to={`/provider/patient/${p.id}`}>
-                          <Button variant="ghost" size="sm" className="rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 hover:text-white">Chart</Button>
+                          <Button variant="ghost" size="sm" className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-teal-700 hover:text-white">Open Chart</Button>
                         </Link>
                       </TableCell>
                     </TableRow>
@@ -230,10 +219,7 @@ export function Dashboard() {
                 )}
               </TableBody>
             </Table>
-            <div className="p-4 border-t bg-muted/10 text-center">
-               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Clinical Engine: Cloudflare D1 SQL Lite Node</p>
-            </div>
-          </div>
+          </Card>
         </div>
       </div>
     </AppLayout>

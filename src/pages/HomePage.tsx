@@ -11,115 +11,72 @@ export function HomePage() {
     setLoadingRole(role);
     setTimeout(() => {
       navigate(role === 'provider' ? '/provider' : '/portal');
-    }, 1200);
+    }, 800);
   };
   return (
-    <div className="min-h-screen bg-background text-foreground relative flex flex-col items-center justify-center overflow-hidden">
-      {/* Decorative Background Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-500/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-sky-500/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-600 via-sky-500 to-teal-400" />
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-slate-900" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center relative z-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, type: 'spring' }}
-          className="mb-10 flex justify-center"
-        >
-          <div className="p-5 rounded-[2.5rem] bg-teal-50 dark:bg-teal-900/20 shadow-xl shadow-teal-500/10 border border-teal-100/50 dark:border-teal-500/20">
-            <Activity className="h-16 w-16 text-teal-600" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 flex justify-center">
+          <div className="p-4 rounded-lg bg-slate-900 shadow-md">
+            <Activity className="h-10 w-10 text-teal-500" />
           </div>
         </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-5xl md:text-7xl font-black tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70"
-        >
-          Aura Health <span className="text-teal-600">EMR</span>
+        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-black tracking-tighter mb-4 text-slate-900 uppercase">
+          Aura Health <span className="text-teal-700">EMR</span>
         </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-xl text-muted-foreground max-w-2xl mx-auto mb-16 leading-relaxed font-medium"
-        >
-          Connecting clinical intelligence with patient empowerment through high-fidelity data isolates and context-aware AI.
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-slate-500 max-w-lg mx-auto mb-12 font-bold uppercase tracking-[0.2em]">
+          Clinical Intelligence Node • High-Density Registry
         </motion.p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <Card className="hover:border-teal-500/50 transition-all group cursor-pointer shadow-soft hover:shadow-2xl hover:-translate-y-2 rounded-[2rem] overflow-hidden border-2 border-transparent bg-white/50 dark:bg-card/50 backdrop-blur-sm">
-              <CardHeader className="p-8">
-                <div className="h-14 w-14 rounded-2xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-700 mb-6 group-hover:scale-110 transition-transform">
-                  <ClipboardList className="h-8 w-8" />
-                </div>
-                <CardTitle className="text-2xl font-bold">Provider Access</CardTitle>
-                <CardDescription className="text-base mt-2">Professional dashboard with clinical vision analysis and secure charting.</CardDescription>
-              </CardHeader>
-              <CardContent className="px-8 pb-8 pt-0">
-                <Button
-                  disabled={loadingRole !== null}
-                  onClick={() => handleLogin('provider')}
-                  className="w-full bg-teal-700 hover:bg-teal-800 rounded-2xl h-14 font-bold text-lg shadow-lg shadow-teal-700/20 active:scale-95 transition-all"
-                >
-                  {loadingRole === 'provider' ? <Loader2 className="animate-spin mr-2" /> : 'Enter Clinical Portal'}
-                  {loadingRole !== 'provider' && <ArrowRight className="ml-2 h-5 w-5" />}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <Card className="hover:border-sky-500/50 transition-all group cursor-pointer shadow-soft hover:shadow-2xl hover:-translate-y-2 rounded-[2rem] overflow-hidden border-2 border-transparent bg-white/50 dark:bg-card/50 backdrop-blur-sm">
-              <CardHeader className="p-8">
-                <div className="h-14 w-14 rounded-2xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-sky-700 mb-6 group-hover:scale-110 transition-transform">
-                  <UserRound className="h-8 w-8" />
-                </div>
-                <CardTitle className="text-2xl font-bold">Patient Portal</CardTitle>
-                <CardDescription className="text-base mt-2">Secure access to wellness summaries and personalized clinical guidance.</CardDescription>
-              </CardHeader>
-              <CardContent className="px-8 pb-8 pt-0">
-                <Button
-                  disabled={loadingRole !== null}
-                  onClick={() => handleLogin('patient')}
-                  variant="outline"
-                  className="w-full border-sky-600/30 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-2xl h-14 font-bold text-lg active:scale-95 transition-all"
-                >
-                  {loadingRole === 'patient' ? <Loader2 className="animate-spin mr-2" /> : 'My Health Access'}
-                  {loadingRole !== 'patient' && <ArrowRight className="ml-2 h-5 w-5" />}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <Card className="rounded-lg border-slate-200 shadow-none hover:border-slate-400 transition-colors text-left bg-white">
+            <CardHeader className="p-6">
+              <div className="h-10 w-10 rounded bg-slate-100 flex items-center justify-center text-slate-700 mb-4 border">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-lg font-bold">Clinical Provider</CardTitle>
+              <CardDescription className="text-xs font-medium">Access patient registry, clinical trends, and AI vision analysis.</CardDescription>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <Button
+                disabled={loadingRole !== null}
+                onClick={() => handleLogin('provider')}
+                className="w-full bg-slate-900 hover:bg-slate-800 rounded-md h-11 font-bold text-xs uppercase tracking-wider"
+              >
+                {loadingRole === 'provider' ? <Loader2 className="animate-spin mr-2" /> : 'Enter Clinical Portal'}
+                {loadingRole !== 'provider' && <ArrowRight className="ml-2 h-4 w-4" />}
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="rounded-lg border-slate-200 shadow-none hover:border-slate-400 transition-colors text-left bg-white">
+            <CardHeader className="p-6">
+              <div className="h-10 w-10 rounded bg-slate-100 flex items-center justify-center text-slate-700 mb-4 border">
+                <UserRound className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-lg font-bold">Patient Access</CardTitle>
+              <CardDescription className="text-xs font-medium">Securely consult with Dr. Aura and review wellness summaries.</CardDescription>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <Button
+                disabled={loadingRole !== null}
+                onClick={() => handleLogin('patient')}
+                variant="outline"
+                className="w-full border-slate-200 rounded-md h-11 font-bold text-xs uppercase tracking-wider"
+              >
+                {loadingRole === 'patient' ? <Loader2 className="animate-spin mr-2" /> : 'Enter Health Portal'}
+                {loadingRole !== 'patient' && <ArrowRight className="ml-2 h-4 w-4" />}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.8 }}
-          className="mt-20 flex flex-wrap items-center justify-center gap-10 text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60"
-        >
-          <div className="flex items-center gap-2 group cursor-help hover:text-teal-600 transition-colors">
-            <ShieldCheck className="h-4 w-4" /> HIPAA Certified Node
-          </div>
-          <div className="flex items-center gap-2 group cursor-help hover:text-sky-600 transition-colors">
-            <Zap className="h-4 w-4" /> Edge Powered storage
-          </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-16 flex items-center justify-center gap-8 text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400">
+          <div className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" /> HIPAA COMPLIANT</div>
+          <div className="flex items-center gap-2"><Zap className="h-3.5 w-3.5" /> D1 SQL PERSISTENT</div>
         </motion.div>
       </div>
-      <footer className="mt-auto py-10 border-t w-full text-center bg-muted/20 backdrop-blur-md relative z-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Aura Health Clinic Systems</p>
-          <p className="text-xs text-muted-foreground/60 max-w-lg mx-auto leading-relaxed">
-            For demonstration purposes only. This platform utilizes LLM-based assistants; always verify clinical findings with a human physician.
-          </p>
-        </div>
+      <footer className="mt-auto py-8 border-t w-full text-center bg-white">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aura Health Systems © 2024</p>
+        <p className="text-[8px] text-slate-400 max-w-xs mx-auto px-4 uppercase font-bold tracking-tighter">Demonstration Only • AI Generated Clinical Insights</p>
       </footer>
     </div>
   );
