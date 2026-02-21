@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PatientForm } from '@/components/provider/PatientForm';
 import { toast } from 'sonner';
@@ -118,7 +118,10 @@ export function Dashboard() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl p-6">
-                  <DialogHeader className="mb-4"><DialogTitle className="text-base font-bold uppercase">Clinical Enrollment</DialogTitle></DialogHeader>
+                  <DialogHeader className="mb-4">
+                    <DialogTitle className="text-base font-bold uppercase">Clinical Enrollment</DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground">Submit patient demographics and initial clinical history to create a new SQL production registry entry.</DialogDescription>
+                  </DialogHeader>
                   <PatientForm onSubmit={handleCreatePatient} isLoading={isCreating} />
                 </DialogContent>
               </Dialog>
