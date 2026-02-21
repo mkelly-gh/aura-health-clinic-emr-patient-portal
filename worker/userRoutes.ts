@@ -16,7 +16,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     // Fetch existing messages from DO
     const messagesRes = await controller.fetch(new Request(`http://internal/api/chat/${sessionId}/messages`));
     if (!messagesRes.ok) throw new Error('Failed to fetch messages');
-    const { data: { messages } } = await messagesRes.json();
+    const { data: { messages } }: { data: { messages: Message[] } } = await messagesRes.json();
     const handler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, model || '@cf/meta/llama-3-8b-instruct');
     // Add user message to DO
     await controller.fetch(new Request(`http://internal/api/chat/${sessionId}/chat`, {
@@ -57,8 +57,8 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     // Fetch updated messages
     const updatedRes = await controller.fetch(new Request(`http://internal/api/chat/${sessionId}/messages`));
     if (!updatedRes.ok) throw new Error('Failed to fetch updated messages');
-    const { data: { messages: updatedMessages } } = await updatedRes.json();
-    return c.json({ success: true, data: { messages: updatedMessages } } as any);
+    const { data: { messages: updatedMessages } }: { data: { messages: Message[] } } = await updatedRes.json();
+    return c.json({ success: true, data: { messages: updatedMessages } });
   });
   app.get('/api/chat/:sessionId/messages', async (c) => {
     const controllerId = c.env.APP_CONTROLLER.idFromName('SINGLETON');
