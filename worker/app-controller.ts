@@ -23,7 +23,7 @@ export class AppController extends DurableObject<Env> {
             const q = url.searchParams.get('q') || '';
             return this.getPatients(q);
           } else if (method === 'POST') {
-            const body = await request.json();
+            const body: any = await request.json();
             return this.createPatient(body);
           }
           break;
@@ -174,7 +174,7 @@ export class AppController extends DurableObject<Env> {
         break;
       case 'chat':
         if (method === 'POST') {
-          const body = await request.json();
+          const body: any = await request.json();
           return this.addMessage(sessionId, body);
         }
         break;
@@ -185,7 +185,7 @@ export class AppController extends DurableObject<Env> {
         break;
       case 'init-context':
         if (method === 'POST') {
-          const body = await request.json();
+          const body: any = await request.json();
           return this.initContext(sessionId, body.patientId);
         }
         break;
@@ -207,7 +207,7 @@ export class AppController extends DurableObject<Env> {
   /**
    * Adds a message to a session.
    */
-  async addMessage(sessionId: string, body: any): Promise<Response> {
+  async addMessage(sessionId: string, body: Message): Promise<Response> {
     const messages: Message[] = (await this.ctx.storage.get(`messages_${sessionId}`)) || [];
     const newMessage: Message = {
       id: crypto.randomUUID(),

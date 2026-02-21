@@ -58,7 +58,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     const updatedRes = await controller.fetch(new Request(`http://internal/api/chat/${sessionId}/messages`));
     if (!updatedRes.ok) throw new Error('Failed to fetch updated messages');
     const { data: { messages: updatedMessages } } = await updatedRes.json();
-    return c.json({ success: true, data: { messages: updatedMessages } });
+    return c.json({ success: true, data: { messages: updatedMessages } } as any);
   });
   app.get('/api/chat/:sessionId/messages', async (c) => {
     const controllerId = c.env.APP_CONTROLLER.idFromName('SINGLETON');
