@@ -79,7 +79,7 @@ function updateWranglerJsonc() {
 function runSetupCommands() {
     const commands = [
     "bun add @tanstack/react-table@^8.20.5",
-    "bun add lucide-react framer-motion recharts sonner zod react-hook-form @hookform/resolvers",
+    "bun add lucide-react framer-motion recharts sonner zod react-hook-form @hookform/resolvers openai",
     "bun add sonner",
     "bun add zod react-hook-form @hookform/resolvers",
     "bun add recharts@2.15.4"
