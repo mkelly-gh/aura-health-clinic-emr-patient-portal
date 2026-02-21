@@ -1,4 +1,3 @@
-import type { Patient } from './types';
 export interface Env {
     CF_AI_BASE_URL: string;
     CF_AI_API_KEY: string;
@@ -9,6 +8,7 @@ export interface Env {
 }
 /**
  * DEPRECATED: Returns a mock stub as we use volatile in-memory storage now.
+ * This is kept for template compatibility but does not perform data generation.
  */
 export function getAppController(env: Env): any {
   return {
@@ -22,10 +22,10 @@ export function getAppController(env: Env): any {
   };
 }
 export async function registerSession(env: Env, sessionId: string, title?: string): Promise<void> {
-  // Logic handled in userRoutes globals now
+  // Logic handled in userRoutes globals
 }
-export async function updateSessionActivity(env: Env, sessionId:string): Promise<void> {
-  // Logic handled in userRoutes globals now
+export async function updateSessionActivity(env: Env, sessionId: string): Promise<void> {
+  // Logic handled in userRoutes globals
 }
 export async function unregisterSession(env: Env, sessionId: string): Promise<boolean> {
   return true;

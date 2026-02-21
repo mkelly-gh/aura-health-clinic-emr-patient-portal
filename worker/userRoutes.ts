@@ -4,7 +4,7 @@ import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
 import type { Patient, Message, Diagnosis, Medication } from "./types";
 import type { Env } from "./core-utils";
-// --- INLINED CLINICAL SEED LOGIC ---
+// --- INLINED CLINICAL SEED LOGIC (Exclusive to this module) ---
 const pseudoEncrypt = (text: string) => btoa(text);
 const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'Sarah', 'David', 'Emily', 'Chris', 'Lisa', 'Thomas', 'Nancy', 'Steven', 'Karen', 'Kevin'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Hernandez', 'Moore', 'Martin', 'Jackson', 'Thompson', 'White', 'Lopez'];
@@ -42,6 +42,7 @@ const HISTORY_SNIPPETS = [
   "Patient presents with seasonal allergies and occasional acid reflux symptoms."
 ];
 function generatePatients(count: number = 55): Patient[] {
+  console.log(`[Aura Registry] Initializing ${count} patient records in volatile isolate storage.`);
   return Array.from({ length: count }, (_, i) => {
     const firstName = FIRST_NAMES[i % FIRST_NAMES.length];
     const lastName = LAST_NAMES[(i + 7) % LAST_NAMES.length];
