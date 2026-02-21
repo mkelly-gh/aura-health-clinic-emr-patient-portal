@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { v4 as uuid } from 'uuid';
 import { Send, Loader2, Bot, X, ShieldCheck, User, AlertCircle, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,12 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
     setInput('');
     setIsLoading(true);
     setStreamingContent('');
-    const userMsg: Message = { id: uuid(), role: 'user', content: textToSend.trim(), timestamp: Date.now() };
+    const userMsg: Message = { 
+      id: crypto.randomUUID(), 
+      role: 'user', 
+      content: textToSend.trim(), 
+      timestamp: Date.now() 
+    };
     setMessages(prev => [...prev, userMsg]);
     try {
       let accumulated = '';

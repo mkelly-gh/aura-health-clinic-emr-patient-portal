@@ -1,5 +1,4 @@
 import type { Message, ChatState } from '../../worker/types';
-import { v4 as uuid } from 'uuid';
 export const MODELS = [
   { id: '@cf/meta/llama-3-8b-instruct', name: 'Llama 3 8B Instruct' },
   { id: 'google-ai-studio/gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
@@ -14,7 +13,7 @@ class ChatService {
   private sessionId: string;
   private baseUrl: string;
   constructor() {
-    this.sessionId = uuid();
+    this.sessionId = crypto.randomUUID();
     this.baseUrl = `/api/chat/${this.sessionId}`;
   }
   public init(sessionId: string): void {
@@ -48,10 +47,10 @@ class ChatService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'omit',
-        body: JSON.stringify({ 
-          message, 
-          model: model || '@cf/meta/llama-3-8b-instruct', 
-          stream: !!onChunk 
+        body: JSON.stringify({
+          message,
+          model: model || '@cf/meta/llama-3-8b-instruct',
+          stream: !!onChunk
         }),
       });
       if (!response.ok) {
