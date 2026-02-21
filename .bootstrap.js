@@ -85,7 +85,8 @@ function runSetupCommands() {
     "bun add recharts@2.15.4",
     "bun add openai uuid",
     "bun add uuid",
-    "bun add @miniflare/d1"
+    "bun add @miniflare/d1",
+    "bun add @lucide/lab"
 ];
     
     if (commands.length === 0) {
