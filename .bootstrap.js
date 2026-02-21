@@ -83,7 +83,8 @@ function runSetupCommands() {
     "bun add sonner",
     "bun add zod react-hook-form @hookform/resolvers",
     "bun add recharts@2.15.4",
-    "bun add openai uuid"
+    "bun add openai uuid",
+    "bun add uuid"
 ];
     
     if (commands.length === 0) {
