@@ -54,7 +54,7 @@ export function Portal() {
   }, [patientIdParam]);
   useEffect(() => {
     initPortal();
-  }, [patientIdParam]);
+  }, [initPortal, patientIdParam]);
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50/30 dark:bg-background">
