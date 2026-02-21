@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, Info, RefreshCcw, DatabaseZap, CheckCircle2 } from 'lucide-react';
+import { Search, UserPlus, Filter, Activity, Database, ShieldCheck, Zap, Loader2, RefreshCcw, DatabaseZap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,7 +43,7 @@ export function Dashboard() {
   }, []);
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(true), 30000);
+    const interval = setInterval(() => loadData(true), 15000);
     return () => clearInterval(interval);
   }, [loadData]);
   const handleCreatePatient = async (data: any) => {
@@ -115,7 +115,7 @@ export function Dashboard() {
                         <div className="flex justify-between border-b pb-1"><span>Storage Node:</span> <span className="text-teal-600">{dbStatus?.binding || 'ISOLATE'}</span></div>
                         <div className="flex justify-between border-b pb-1"><span>Ping:</span> <span className="text-teal-600">{dbStatus?.pingMs}ms</span></div>
                         <div className="flex justify-between border-b pb-1"><span>Version:</span> <span className="text-teal-600">{dbStatus?.schemaVersion}</span></div>
-                        <p className="text-[8px] text-muted-foreground leading-tight pt-1 normal-case font-medium">Data is isolated per worker lifecycle. Total records: {patients.length}.</p>
+                        <p className="text-[8px] text-muted-foreground leading-tight pt-1 normal-case font-medium">Data is isolated per worker lifecycle.</p>
                       </div>
                     </TooltipContent>
                   </Tooltip>
@@ -154,7 +154,7 @@ export function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="shadow-sm border-none bg-teal-50/50 dark:bg-teal-900/10 transition-all hover:shadow-md">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Registry Density</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-teal-700">{loading ? <Loader2 className="animate-spin h-8 w-8" /> : patients.length}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-teal-700">{loading ? <Loader2 className="animate-spin h-8 w-8" /> : (dbStatus?.patientCount ?? patients.length)}</div></CardContent>
             </Card>
             <Card className="shadow-sm border-none bg-sky-50/50 dark:bg-sky-900/10 transition-all hover:shadow-md">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Sessions</CardTitle></CardHeader>
@@ -192,7 +192,7 @@ export function Dashboard() {
               <div className="flex items-center gap-2">
                  <AnimatePresence mode="wait">
                    {isRefreshing && (
-                     <motion.div 
+                     <motion.div
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 10 }}

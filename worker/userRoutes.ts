@@ -256,6 +256,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
   app.get('/api/db-status', (c) => {
+    if (inMemoryPatients.length === 0) {
+      inMemoryPatients.push(...generatePatients(55));
+    }
     return c.json({
       success: true,
       data: {

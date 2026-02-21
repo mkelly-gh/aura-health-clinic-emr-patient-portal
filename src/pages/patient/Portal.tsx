@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Calendar, FileText, Pill, MessageSquare, ShieldCheck, ArrowRight, Activity, X, Loader2, RefreshCw } from 'lucide-react';
+import { Heart, Calendar, FileText, Pill, MessageSquare, ShieldCheck, ArrowRight, Activity, X, RefreshCw } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,18 +28,16 @@ export function Portal() {
           ? data.data.find((p: Patient) => p.id === patientIdParam) || data.data[0]
           : data.data[0];
         setPatient(selectedPatient);
-        // Sync AI context
+        // Synchronize AI context with the identified patient
         setIsContextSyncing(true);
         try {
-          const sessionId = chatService.getSessionId?.();
-          if (sessionId) {
-            await fetch(`/api/chat/${sessionId}/init-context`, {
-              method: 'POST',
-              credentials: 'omit',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ patientId: selectedPatient.id })
-            });
-          }
+          const sessionId = chatService.getSessionId();
+          await fetch(`/api/chat/${sessionId}/init-context`, {
+            method: 'POST',
+            credentials: 'omit',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ patientId: selectedPatient.id })
+          });
         } catch (ctxErr) {
           console.error("AI Context Sync Failure", ctxErr);
         } finally {
@@ -54,7 +52,7 @@ export function Portal() {
   }, [patientIdParam]);
   useEffect(() => {
     initPortal();
-  }, [initPortal, patientIdParam]);
+  }, [initPortal]);
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50/30 dark:bg-background">
@@ -91,11 +89,11 @@ export function Portal() {
           </div>
           <div className="flex items-center gap-4">
              <div className="text-right hidden sm:block">
-               <div className="text-sm font-bold text-foreground">Welcome, {patient?.firstName}</div>
-               <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MRN: {patient?.mrn}</div>
+               <div className="text-sm font-bold text-foreground">Welcome, {patient.firstName}</div>
+               <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MRN: {patient.mrn}</div>
              </div>
              <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-sky-500 to-teal-400 border-2 border-white shadow-md flex items-center justify-center font-bold text-white ring-2 ring-sky-100 dark:ring-sky-900">
-               {patient?.firstName?.[0]}{patient?.lastName?.[0]}
+               {patient.firstName[0]}{patient.lastName[0]}
              </div>
           </div>
         </div>
@@ -103,7 +101,7 @@ export function Portal() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-gradient-to-br from-sky-600 via-sky-700 to-teal-700 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden group"
@@ -133,16 +131,16 @@ export function Portal() {
                 <CardContent className="pt-6 space-y-6">
                   <div className="space-y-1">
                      <span className="text-muted-foreground text-xs uppercase font-black tracking-widest">Active Diagnosis</span>
-                     <div className="font-bold text-xl text-foreground">{patient?.diagnoses[0]?.description || 'Normal Health Baseline'}</div>
+                     <div className="font-bold text-xl text-foreground">{patient.diagnoses[0]?.description || 'Normal Health Baseline'}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-6 pt-2">
                     <div className="space-y-1">
                        <span className="text-muted-foreground text-xs uppercase font-black tracking-widest">Blood Type</span>
-                       <div className="font-bold text-foreground text-lg">{patient?.bloodType}</div>
+                       <div className="font-bold text-foreground text-lg">{patient.bloodType}</div>
                     </div>
                     <div className="space-y-1">
                        <span className="text-muted-foreground text-xs uppercase font-black tracking-widest">Records ID</span>
-                       <div className="font-mono text-sm bg-muted/50 px-2 py-1 rounded inline-block">{patient?.mrn}</div>
+                       <div className="font-mono text-sm bg-muted/50 px-2 py-1 rounded inline-block">{patient.mrn}</div>
                     </div>
                   </div>
                   <Button variant="ghost" className="w-full mt-4 rounded-2xl border border-sky-600/20 text-sky-700 hover:bg-sky-50 transition-all">Download Full Summary</Button>
@@ -158,7 +156,7 @@ export function Portal() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
-                  {(patient?.medications || []).slice(0, 3).map((m, i) => (
+                  {patient.medications.slice(0, 3).map((m, i) => (
                     <div key={i} className="p-4 border rounded-2xl flex justify-between items-center group hover:bg-teal-50/30 dark:hover:bg-teal-900/10 transition-colors">
                       <div>
                         <div className="font-bold text-foreground">{m.name} <span className="text-xs font-normal opacity-60">{m.dosage}</span></div>
@@ -167,7 +165,7 @@ export function Portal() {
                       <Badge className="bg-teal-600/10 text-teal-700 dark:text-teal-400 border-none px-2 py-0 h-5 text-[10px]">ACTIVE</Badge>
                     </div>
                   ))}
-                  {(!patient?.medications || patient.medications.length === 0) && (
+                  {patient.medications.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground italic text-sm">No active medications prescribed.</div>
                   )}
                 </CardContent>
@@ -185,7 +183,7 @@ export function Portal() {
                 </div>
                 <h3 className="font-bold text-2xl mb-2">Edge Encrypted</h3>
                 <p className="text-sky-100/70 text-sm mb-8 px-4 leading-relaxed">Your data remains in volatile isolate memory, ensuring zero permanent trace of sensitive telemetry.</p>
-                <div className="py-3 bg-black/20 rounded-2xl text-[10px] font-mono tracking-widest text-sky-200 uppercase">PORTAL-ISOLATE-{chatService.getSessionId?.()?.split('-')[0]?.toUpperCase() || 'SYNC'}</div>
+                <div className="py-3 bg-black/20 rounded-2xl text-[10px] font-mono tracking-widest text-sky-200 uppercase">PORTAL-ISOLATE-{chatService.getSessionId().split('-')[0].toUpperCase()}</div>
               </CardContent>
             </Card>
             <Card className="rounded-3xl border-none shadow-soft bg-white dark:bg-card">
@@ -205,7 +203,6 @@ export function Portal() {
             </Card>
           </div>
         </div>
-        {/* Chat Float Trigger */}
         <div className="fixed bottom-8 right-8 z-[60] flex flex-col items-end gap-4">
           <AnimatePresence>
             {!chatOpen && (
@@ -221,9 +218,8 @@ export function Portal() {
                   {isContextSyncing && <RefreshCw className="h-3 w-3 animate-spin text-sky-500 ml-auto" />}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Hello {patient?.firstName}. I've synchronized with your {patient?.mrn} clinical profile. Do you have any questions about your medications?
+                  Hello {patient.firstName}. I've synchronized with your {patient.mrn} clinical profile. Do you have any questions?
                 </p>
-                <div className="absolute right-[-8px] bottom-8 w-4 h-4 bg-white dark:bg-card rotate-45 border-r border-b border-white/0" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -232,21 +228,19 @@ export function Portal() {
             onClick={() => setChatOpen(!chatOpen)}
             className={cn(
               "rounded-full h-16 w-16 shadow-2xl transition-all duration-300 active:scale-90",
-              chatOpen 
-                ? 'bg-destructive hover:bg-destructive/90 shadow-destructive/20 rotate-90' 
+              chatOpen
+                ? 'bg-destructive hover:bg-destructive/90 shadow-destructive/20 rotate-90'
                 : 'bg-sky-600 hover:bg-sky-700 shadow-sky-600/40'
             )}
           >
             {chatOpen ? <X className="h-8 w-8 text-white" /> : <MessageSquare className="h-8 w-8 text-white" />}
           </Button>
         </div>
-        {patient && (
-          <DrAuraChat
-            patientId={patient.id}
-            isOpen={chatOpen}
-            onClose={() => setChatOpen(false)}
-          />
-        )}
+        <DrAuraChat
+          patientId={patient.id}
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
       </main>
       <footer className="mt-12 py-12 border-t bg-muted/10">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
@@ -256,7 +250,7 @@ export function Portal() {
           </div>
           <p className="text-xs text-muted-foreground">© 2024 Aura Health Clinic. All rights reserved. Platform v1.2.0-PRODUCTION</p>
           <p className="text-[10px] text-muted-foreground/60 italic max-w-md mx-auto">
-            IMPORTANT: Dr. Aura is an AI model. Request limits apply. For informational use only; always verify medical advice with a human physician.
+            IMPORTANT: Dr. Aura is an AI model. Request limits apply. Always verify medical advice with a human physician.
           </p>
         </div>
       </footer>
