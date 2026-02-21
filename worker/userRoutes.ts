@@ -4,7 +4,171 @@ import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
 import type { Patient, Message, Diagnosis, Medication } from "./types";
 import type { Env } from "./core-utils";
-import { generatePatients } from './core-utils';
+// Constants for generating patients
+const FIRST_NAMES = [
+  'John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Lisa', 'William', 'Anna',
+  'James', 'Mary', 'Christopher', 'Patricia', 'Daniel', 'Jennifer', 'Matthew', 'Linda', 'Anthony', 'Barbara',
+  'Mark', 'Elizabeth', 'Andrew', 'Jessica', 'Joseph', 'Susan', 'Steven', 'Margaret', 'Kevin', 'Dorothy',
+  'Brian', 'Helen', 'Timothy', 'Sandra', 'Ronald', 'Donna', 'George', 'Carol', 'Jason', 'Ruth',
+  'Edward', 'Sharon', 'Charles', 'Michelle', 'Thomas', 'Laura', 'Nicholas', 'Sarah', 'Jonathan', 'Betty'
+];
+const LAST_NAMES = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
+  'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin',
+  'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson',
+  'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores',
+  'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'
+];
+const DIAGNOSES_TEMPLATES = [
+  'Hypertension', 'Type 2 Diabetes Mellitus', 'Asthma', 'Major Depressive Disorder', 'Osteoarthritis',
+  'Chronic Obstructive Pulmonary Disease (COPD)', 'Coronary Artery Disease', 'Chronic Kidney Disease',
+  'Rheumatoid Arthritis', 'Anxiety Disorder', 'Migraine', 'Gastroesophageal Reflux Disease (GERD)',
+  'Atrial Fibrillation', 'Hyperlipidemia', 'Obesity', 'Sleep Apnea', 'Peripheral Artery Disease',
+  'Heart Failure', 'Stroke', 'Pneumonia', 'Urinary Tract Infection', 'Acute Coronary Syndrome',
+  'Deep Vein Thrombosis', 'Pulmonary Embolism', 'Sepsis', 'Acute Pancreatitis', 'Cholelithiasis',
+  'Appendicitis', 'Diverticulitis', 'Inflammatory Bowel Disease', 'Cirrhosis', 'Hepatitis C',
+  'HIV/AIDS', 'Tuberculosis', 'Meningitis', 'Encephalitis', 'Epilepsy', 'Parkinson\'s Disease',
+  'Alzheimer\'s Disease', 'Multiple Sclerosis', 'Amyotrophic Lateral Sclerosis (ALS)', 'Cerebral Palsy',
+  'Spinal Cord Injury', 'Traumatic Brain Injury', 'Burn Injury', 'Fracture', 'Dislocation',
+  'Sprain/Strain', 'Concussion', 'Laceration', 'Contusion', 'Hematoma', 'Abscess', 'Cellulitis'
+];
+const MEDS_LIBRARY = [
+  'Lisinopril', 'Metformin', 'Albuterol', 'Sertraline', 'Ibuprofen', 'Amlodipine', 'Omeprazole',
+  'Simvastatin', 'Losartan', 'Gabapentin', 'Prednisone', 'Warfarin', 'Insulin Glargine', 'Furosemide',
+  'Hydrochlorothiazide', 'Levothyroxine', 'Aspirin', 'Clopidogrel', 'Atorvastatin', 'Metoprolol',
+  'Pantoprazole', 'Escitalopram', 'Tramadol', 'Citalopram', 'Fluoxetine', 'Paroxetine', 'Venlafaxine',
+  'Bupropion', 'Duloxetine', 'Trazodone', 'Zolpidem', 'Lorazepam', 'Alprazolam', 'Clonazepam',
+  'Diazepam', 'Oxycodone', 'Hydrocodone', 'Morphine', 'Fentanyl', 'Codeine', 'Acetaminophen',
+  'Naproxen', 'Celecoxib', 'Diclofenac', 'Meloxicam', 'Allopurinol', 'Colchicine', 'Methotrexate',
+  'Sulfasalazine', 'Azathioprine', 'Cyclosporine', 'Tacrolimus', 'Mycophenolate', 'Rituximab',
+  'Infliximab', 'Adalimumab', 'Etanercept', 'Certolizumab', 'Golimumab', 'Ustekinumab', 'Secukinumab',
+  'Ixekizumab', 'Brodalumab', 'Tildrakizumab', 'Guselkumab', 'Risankizumab', 'Tofacitinib', 'Baricitinib',
+  'Upadacitinib', 'Filgotinib', 'Peficitinib', 'Decitabine', 'Azacitidine', 'Lenalidomide', 'Pomalidomide',
+  'Thalidomide', 'Bortezomib', 'Carfilzomib', 'Ixazomib', 'Daratumumab', 'Elotuzumab', 'Isatuximab',
+  'Belantamab', 'Selinexor', 'Venetoclax', 'Ibrutinib', 'Acalabrutinib', 'Zanubrutinib', 'Idelalisib',
+  'Duvelisib', 'Copanlisib', 'Umbralisib', 'Tazemetostat', 'Larotrectinib', 'Entrectinib', 'Selpercatinib',
+  'Pralsetinib', 'Capmatinib', 'Crizotnib', 'Alectinib', 'Brigatinib', 'Ceritinib', 'Lorlatinib',
+  'Osimertinib', 'Erlotinib', 'Gefitinib', 'Afatinib', 'Dacomitinib', 'Necitumumab', 'Ramucirumab',
+  'Bevacizumab', 'Aflibercept', 'Ranibizumab', 'Brolucizumab', 'Faricimab', 'Pegaptanib', 'Vandetanib',
+  'Cabozantinib', 'Lenvatinib', 'Sorafenib', 'Sunitinib', 'Pazopanib', 'Axitinib', 'Tivozanib',
+  'Nivolumab', 'Pembrolizumab', 'Atezolizumab', 'Durvalumab', 'Avelumab', 'Ipilimumab', 'Tremelimumab',
+  'Cemiplimab', 'Retifanlimab', 'Balstilimab', 'Zalifrelimab', 'Spartalizumab', 'Toripalimab',
+  'Sintilimab', 'Camrelizumab', 'Tislelizumab', 'Dostarlimab', 'Jemperli', 'Lenvatinib', 'Pembrolizumab'
+];
+const HISTORY_SNIPPETS = [
+  'Patient reports intermittent chest pain on exertion, relieved by rest.',
+  'History of smoking 1 pack per day for 20 years, quit 5 years ago.',
+  'Allergic to penicillin, hives and anaphylaxis.',
+  'Family history of diabetes mellitus in first-degree relatives.',
+  'Chronic back pain following motor vehicle accident 10 years ago.',
+  'Recurrent urinary tract infections, treated with antibiotics multiple times.',
+  'Episodic migraines triggered by stress and lack of sleep.',
+  'Hypertension diagnosed 5 years ago, currently on medication.',
+  'Depression with suicidal ideation, on antidepressants.',
+  'Asthma exacerbations during pollen season.',
+  'Osteoarthritis in knees, limiting mobility.',
+  'COPD with frequent exacerbations requiring hospitalization.',
+  'Coronary artery disease, status post stent placement.',
+  'Chronic kidney disease stage 3, monitoring creatinine levels.',
+  'Rheumatoid arthritis, on biologic therapy.',
+  'Anxiety disorder, managed with therapy and medication.',
+  'GERD with heartburn and regurgitation.',
+  'Atrial fibrillation, on anticoagulation.',
+  'Hyperlipidemia, on statin therapy.',
+  'Obesity with BMI of 35, attempting weight loss.',
+  'Sleep apnea, using CPAP nightly.',
+  'Peripheral artery disease, claudication on walking.',
+  'Heart failure with reduced ejection fraction.',
+  'History of stroke with residual weakness.',
+  'Pneumonia last winter, fully recovered.',
+  'Recent UTI, treated with ciprofloxacin.',
+  'Acute coronary syndrome, status post angioplasty.',
+  'Deep vein thrombosis in left leg.',
+  'Pulmonary embolism, on anticoagulation.',
+  'Sepsis secondary to UTI.',
+  'Acute pancreatitis, resolved.',
+  'Cholelithiasis, asymptomatic.',
+  'Appendicitis, status post appendectomy.',
+  'Diverticulitis, managed conservatively.',
+  'Inflammatory bowel disease, on mesalamine.',
+  'Cirrhosis due to alcohol abuse.',
+  'Hepatitis C, treated with antivirals.',
+  'HIV/AIDS, on ART.',
+  'Tuberculosis, completed treatment.',
+  'Meningitis in childhood.',
+  'Encephalitis, recovered with sequelae.',
+  'Epilepsy, well-controlled on medication.',
+  'Parkinson\'s disease, on levodopa.',
+  'Alzheimer\'s disease, early stage.',
+  'Multiple sclerosis, relapsing-remitting.',
+  'ALS, progressing slowly.',
+  'Cerebral palsy from birth.',
+  'Spinal cord injury from diving accident.',
+  'Traumatic brain injury from fall.',
+  'Burn injury from house fire.',
+  'Fracture of femur, healed.',
+  'Dislocation of shoulder, recurrent.',
+  'Sprain of ankle, chronic instability.',
+  'Concussion from sports injury.',
+  'Laceration requiring sutures.',
+  'Contusion from blunt trauma.',
+  'Hematoma after fall.',
+  'Abscess drained surgically.',
+  'Cellulitis treated with antibiotics.'
+];
+// pseudoEncrypt function
+function pseudoEncrypt(str: string): string {
+  // Simple pseudo-encryption: reverse the string and add a salt
+  const salt = 'AuraHealthClinicSalt';
+  return salt + str.split('').reverse().join('') + salt;
+}
+// generatePatients function
+function generatePatients(count: number = 55): Patient[] {
+  return Array.from({ length: count }, (_, i) => {
+    const firstName = FIRST_NAMES[i % FIRST_NAMES.length];
+    const lastName = LAST_NAMES[(i + 7) % LAST_NAMES.length];
+    const id = (i + 1).toString();
+    const dobYear = 1950 + (i % 50);
+    const dobMonth = 1 + (i % 12);
+    const dobDay = 1 + (i % 28);
+    const ssnRaw = `${Math.floor(100 + Math.random() * 800)}-${Math.floor(10 + Math.random() * 80)}-${Math.floor(1000 + Math.random() * 8000)}`;
+    const emailRaw = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${i}@example.com`;
+    const diagCount = 1 + (i % 2);
+    const diagnoses = Array.from({ length: diagCount }, (_, idx) => ({
+      ...DIAGNOSES_TEMPLATES[(i + idx) % DIAGNOSES_TEMPLATES.length],
+      date: new Date(2023, i % 12, 1).toISOString().split('T')[0]
+    }));
+    const medCount = 1 + (i % 3);
+    const medications = Array.from({ length: medCount }, (_, idx) => ({
+      ...MEDS_LIBRARY[(i + idx) % MEDS_LIBRARY.length],
+      status: 'Active' as const
+    }));
+    return {
+      id,
+      mrn: `AURA-${200000 + i}`,
+      ssn: pseudoEncrypt(ssnRaw),
+      firstName,
+      lastName,
+      dob: `${dobYear}-${dobMonth.toString().padStart(2, '0')}-${dobDay.toString().padStart(2, '0')}`,
+      gender: i % 2 === 0 ? 'Male' : 'Female',
+      bloodType: ['A+', 'O+', 'B+', 'AB+', 'A-', 'O-', 'B-', 'AB-'][i % 8],
+      email: pseudoEncrypt(emailRaw),
+      phone: `555-${100 + (i % 899)}-${1000 + (i % 8999)}`,
+      address: `${100 + i} Medical Plaza Dr, Healthcare City, ST 12345`,
+      diagnoses,
+      medications,
+      vitals: {
+        height: `${5 + (i % 2)}'${7 + (i % 5)}"`,
+        weight: `${140 + (i % 60)} lbs`,
+        bmi: (20 + (i % 10)).toString(),
+        bp: `${110 + (i % 30)}/${70 + (i % 20)}`,
+        hr: (60 + (i % 30)).toString(),
+        temp: "98.6 F"
+      },
+      history: HISTORY_SNIPPETS[i % HISTORY_SNIPPETS.length]
+    };
+  });
+}
 // --- GLOBAL VOLATILE IN-MEMORY STORAGE ---
 const inMemoryPatients: Patient[] = [];
 const inMemoryChatHistory: Map<string, Message[]> = new Map();
