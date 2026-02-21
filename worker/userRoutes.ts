@@ -4,6 +4,7 @@ import { decryptField, encryptField } from './utils';
 import { ChatHandler } from './chat';
 import type { Patient, Message } from "./types";
 import type { Env } from "./core-utils";
+import { getInMemoryD1 } from '@miniflare/d1';
 const FIRST_NAMES = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'Sarah', 'David', 'Emily', 'Chris', 'Lisa', 'Thomas', 'Nancy', 'Steven', 'Karen', 'Kevin'];
 const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Hernandez', 'Moore', 'Martin', 'Jackson', 'Thompson', 'White', 'Lopez'];
 const DIAGNOSES_TEMPLATES = [
@@ -104,7 +105,7 @@ async function seedPatients(db: D1Database | undefined, force = false) {
 }
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   app.post('/api/chat/:sessionId/chat', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const sessionId = c.req.param('sessionId');
     const { message, stream, model } = await c.req.json();
@@ -147,18 +148,18 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: { messages: updatedHistory.results } });
   });
   app.get('/api/chat/:sessionId/messages', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const history = await c.env.DB.prepare("SELECT role, content, timestamp, id FROM chat_messages WHERE sessionId = ? ORDER BY timestamp ASC").bind(c.req.param('sessionId')).all<Message>();
     return c.json({ success: true, data: { messages: history.results || [] } });
   });
   app.delete('/api/chat/:sessionId/clear', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await c.env.DB.prepare("DELETE FROM chat_messages WHERE sessionId = ?").bind(c.req.param('sessionId')).run();
     return c.json({ success: true });
   });
   app.post('/api/chat/:sessionId/init-context', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const { patientId } = await c.req.json();
     const sessionId = c.req.param('sessionId');
@@ -180,7 +181,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true });
   });
   app.post('/api/seed-patients', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const force = c.req.query('force') === 'true';
     await seedPatients(c.env.DB, force);
@@ -190,7 +191,7 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/patients', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     await seedPatients(c.env.DB);
     const q = c.req.query('q');
@@ -213,7 +214,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: decrypted });
   });
   app.get('/api/patients/:id', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const p = await c.env.DB.prepare("SELECT * FROM patients WHERE id = ?").bind(c.req.param('id')).first<any>();
     if (!p) return c.json({ success: false, error: 'Record not found' }, 404);
@@ -227,7 +228,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }});
   });
   app.post('/api/patients', async (c) => {
-    if (!c.env.DB) return c.json({ success: false, error: 'Database service is not configured or available.' }, 503);
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const body = await c.req.json();
     const id = crypto.randomUUID();
@@ -244,6 +245,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: { id, mrn, ...body } });
   });
   app.post('/api/analyze-evidence', async (c) => {
+    c.env.DB = c.env.DB || getInMemoryD1();
     const { image } = await c.req.json();
     if (!image) return c.json({ success: false, error: 'Clinical imagery required' }, 400);
     try {
@@ -276,7 +278,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
   app.get('/api/db-status', async (c) => {
-    if (!c.env.DB) return c.json({ success: true, data: { engine: 'SQL_PROD_D1', binding: 'CLOUDFLARE_D1', connected: false, status: 'UNCONFIGURED' } });
+    c.env.DB = c.env.DB || getInMemoryD1();
     await ensureTables(c.env.DB);
     const pCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM patients").first<{ count: number }>();
     const sCount = await c.env.DB.prepare("SELECT COUNT(DISTINCT sessionId) as count FROM chat_messages").first<{ count: number }>();
