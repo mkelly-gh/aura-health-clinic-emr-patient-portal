@@ -17,6 +17,27 @@ class ChatService {
     this.sessionId = uuid();
     this.baseUrl = `/api/chat/${this.sessionId}`;
   }
+  public init(sessionId: string): void {
+    this.sessionId = sessionId;
+    this.baseUrl = `/api/chat/${this.sessionId}`;
+  }
+  async initContext(patientId: string): Promise<ChatResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}/init-context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'omit',
+        body: JSON.stringify({ patientId }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to initialize context:', error);
+      return { success: false, error: 'Failed to initialize context' };
+    }
+  }
   async sendMessage(
     message: string,
     model?: string,

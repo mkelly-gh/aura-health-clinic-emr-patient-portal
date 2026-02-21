@@ -38,6 +38,7 @@ export function DrAuraChat({ patientId, isOpen, onClose }: DrAuraChatProps) {
       const sessionId = localStorage.getItem('aura-session-id') || uuid();
       localStorage.setItem('aura-session-id', sessionId);
       chatService.init(sessionId);
+      chatService.initContext(patientId);
       loadHistory();
     }
   }, [isOpen, messages.length, loadHistory]);
