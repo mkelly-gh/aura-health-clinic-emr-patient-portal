@@ -1,6 +1,6 @@
 # Cloudflare AI Chat Application
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/mkelly-gh/aura-health-clinic-emr-patient-portal)
 
 A production-ready, full-stack AI chat application built on Cloudflare Workers. Features multi-session conversations, streaming responses, tool calling (web search, weather, MCP integration), and model switching. The frontend is a responsive React app with shadcn/ui components, while the backend leverages Cloudflare Durable Objects and Agents SDK for stateful chat sessions.
 
@@ -91,7 +91,7 @@ Deploy to Cloudflare Workers with full-stack support (static assets + Worker):
    npx wrangler deploy
    ```
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/mkelly-gh/aura-health-clinic-emr-patient-portal)
 
 Your app will be live at `<your-subdomain>.workers.dev` with automatic SPA routing.
 
